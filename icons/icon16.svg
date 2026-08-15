@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Card -->
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  
+  <!-- Markdown 'M' and Down Arrow Badge -->
+  <path d="M 28 88 L 28 40 L 44 58 L 60 40 L 60 88 L 48 88 L 48 60 L 44 65 L 40 60 L 40 88 Z" fill="url(#mark)"/>
+  <path d="M 76 60 L 86 60 L 86 40 L 98 40 L 98 60 L 108 60 L 92 84 Z" fill="#38bdf8"/>
+  <circle cx="92" cy="94" r="5" fill="#38bdf8"/>
+</svg>

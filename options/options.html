@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Options - Web to Clean Markdown for LLM</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <header class="options-header">
+      <div class="brand">
+        <div class="logo">M↓</div>
+        <div>
+          <h1>Web to Clean Markdown for LLM</h1>
+          <p class="subtitle">Configuration & Export Preferences • by @devnhancook</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="options-main">
+      <!-- Section 1: Output Format -->
+      <div class="card">
+        <h2>📄 Markdown Formatting Options</h2>
+        <div class="form-group">
+          <label class="switch">
+            <input type="checkbox" id="opt-frontmatter" checked>
+            <span class="slider"></span>
+          </label>
+          <div class="opt-desc">
+            <strong>Include YAML Frontmatter</strong>
+            <p>Prepends metadata (Title, URL, Author, Date, Word Count) at top of Markdown.</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="switch">
+            <input type="checkbox" id="opt-watermark" checked>
+            <span class="slider"></span>
+          </label>
+          <div class="opt-desc">
+            <strong>Include Author Attribution Comment</strong>
+            <p>Adds a clean footer attribution supporting the open-source project.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: LLM Prompt Wrap -->
+      <div class="card">
+        <h2>🤖 LLM Prompt Wrapper Template</h2>
+        <p class="card-desc">Wrap clipped markdown into custom XML or markdown delimiters when copying.</p>
+        <select id="opt-prompt-format" class="select-input">
+          <option value="raw">Raw Markdown (Standard)</option>
+          <option value="xml">&lt;article_context&gt; ... &lt;/article_context&gt; (Anthropic Claude Best Practice)</option>
+          <option value="markdown">```markdown ... ``` (Code Block Encapsulation)</option>
+        </select>
+      </div>
+
+      <!-- Section 3: Community & Support -->
+      <div class="card highlight-card">
+        <h2>☕ Support & Community</h2>
+        <p>This extension is 100% free and open source under the MIT License.</p>
+        <div class="links-row">
+          <a href="https://buymeacoffee.com/devnhancook" target="_blank" class="btn btn-amber">☕ Buy Me a Coffee</a>
+          <a href="https://github.com/sponsors/devnhancook" target="_blank" class="btn btn-outline">⭐ GitHub Sponsor</a>
+          <a href="https://devnhancook.substack.com" target="_blank" class="btn btn-blue">📬 AI Prompts Newsletter</a>
+        </div>
+      </div>
+
+      <div class="save-bar">
+        <button id="btn-save" class="btn btn-primary">Save Settings</button>
+        <span id="save-status" class="save-status"></span>
+      </div>
+    </main>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
