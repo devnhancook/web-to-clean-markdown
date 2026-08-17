@@ -25,44 +25,72 @@
 
 ## 🌟 Tại sao bạn cần Web to Clean Markdown & Study Vault?
 
-Khi ôn thi, nghiên cứu hoặc thu thập bài giải trên mạng, **hơn 60% dữ liệu là rác thị giác** (quảng cáo, popup, thanh điều hướng, banner cookie, bài viết liên quan). Việc sao chép thủ công làm mất thời gian, vỡ công thức và lãng phí token khi đưa vào AI.
+Khi ôn thi, nghiên cứu hoặc thu thập bài giải trên mạng, **hơn 60% dữ liệu là rác thị giác** (quảng cáo, popup, thanh điều hướng, banner cookie che hết chữ). Việc sao chép thủ công làm mất thời gian, vỡ công thức và lãng phí token khi đưa vào AI.
 
-**Web to Clean Markdown** kết hợp **Bộ lọc bóc tách siêu tốc (<200ms)** cùng **Kho lưu trữ học tập cá nhân (Study Vault)** ngay trên trình duyệt.
+**Web to Clean Markdown** kết hợp **Bộ lọc bóc tách siêu tốc (<200ms)** cùng **Kho lưu trữ học tập cá nhân (Study Vault)** ngay trên trình duyệt máy tính của bạn.
+
+---
+
+## 🚀 HƯỚNG DẪN CÀI ĐẶT CHI TIẾT (CHO NGƯỜI KHÔNG BIẾT CODE - MẤT 30 GIÂY)
+
+> 💡 **Bạn không cần biết lập trình vẫn cài đặt cực kỳ dễ dàng theo 3 bước sau:**
+
+### 📥 Bước 1: Tải bộ cài đặt về máy tính
+1. Nhìn lên góc trên của trang GitHub này, bấm vào nút màu xanh lá cây **`<> Code`** ➔ Chọn **`Download ZIP`**.  
+   *(Hoặc bấm vào [link tải trực tiếp file ZIP tại đây](https://github.com/devnhancook/web-to-clean-markdown/archive/refs/heads/main.zip))*.
+2. Sau khi tải về, bấm chuột phải vào file zip vừa tải ➔ Chọn **Extract All... (Giải nén)** để mở thư mục ra.
+
+---
+
+### 🌐 Bước 2: Mở trang quản lý Tiện ích trên Trình duyệt
+Mở trình duyệt bạn đang dùng (Google Chrome, Cốc Cốc, Microsoft Edge, hoặc Brave) và làm như sau:
+1. Gõ đường dẫn này vào thanh địa chỉ rồi nhấn Enter:
+   * Trên **Chrome / Cốc Cốc / Brave**: `chrome://extensions`
+   * Trên **Microsoft Edge**: `edge://extensions`
+2. Nhìn lên góc trên cùng bên phải màn hình, **bật công tắc: "Chế độ dành cho nhà phát triển" (Developer mode)**.
+
+---
+
+### ⚙️ Bước 3: Nạp tiện ích vào dùng ngay
+1. Bấm vào nút **"Tải tiện ích đã giải nén" (Load unpacked)** ở góc trên bên trái.
+2. Chọn đúng thư mục `web-to-clean-markdown` mà bạn vừa giải nén ở **Bước 1**.
+3. **Xong!** Bạn sẽ thấy biểu tượng chữ **M↓** xuất hiện trên trình duyệt.
+
+> 📌 **Mẹo nhỏ:** Bấm vào biểu tượng mảnh ghép 🧩 trên góc trình duyệt và bấm **Ghim (Pin 📌)** icon extension để bấm dùng cho tiện nhé!
+
+---
+
+## 📖 HƯỚNG DẪN SỬ DỤNG NHANH
+
+### Cách 1: Bóc sạch rác để ném vào ChatGPT / Claude nhờ giảng bài
+1. Mở bài viết, đề thi, hay bài học bất kỳ trên mạng.
+2. Nhấn tổ hợp phím **`Ctrl + Shift + K`** (hoặc click vào biểu tượng extension).
+3. Bấm nút màu xanh **"Copy for LLM"** ➔ Dán thẳng vào ChatGPT/Claude: *"Hãy tóm tắt và giải chi tiết bài này giúp tôi"*.
+
+### Cách 2: Lưu tài liệu vào Kho học tập (Study Vault) để xem Offline
+1. Mở bài viết cần lưu ➔ Mở extension lên.
+2. Chọn nhãn môn học ở mục **Category Tag** (Ví dụ: `📐 Toán`, `⚡ Lý`, `📖 Văn`...).
+3. Bấm nút màu xanh lá **"Save to Vault"**.
+4. Khi nào muốn xem lại, bạn chỉ cần chuyển sang tab **Study Vault** là có thể tìm kiếm, đọc lại toàn văn bài học mà không cần kết nối mạng!
 
 ---
 
 ## ✨ Tính Năng Nổi Bật
 
-- **🚀 1-Click "Copy for LLM"**: Sao chép tức thì Markdown đã định dạng kèm đầy đủ YAML Frontmatter (`tiêu đề`, `tác giả`, `link gốc`, `ngày cào`, `thời gian đọc`) vào Clipboard.
-- **📚 Kho Lưu Trữ Học Tập (Study Vault Archiver)**: Lưu trữ các bài giảng, đề thi thẳng vào bộ nhớ máy tính phân loại theo nhãn môn học (`📐 Toán`, `⚡ Lý`, `🧪 Hóa`, `📖 Văn`, `🇬🇧 Tiếng Anh`, `🤖 AI & Tech`).
-- **🔍 Tìm Kiếm & Đọc Bài Offline**: Tìm nhanh bài viết theo từ khóa, xem trước toàn văn trong chế độ đọc sách (Reader View) không cần mở tab mới.
-- **📦 "Download .md" & Sao Lưu Toàn Bộ**: Tải file `.md` đơn lẻ hoặc xuất toàn bộ kho tài liệu thành file JSON backup.
-- **🎯 Trình Chọn Vùng Thông Minh (Smart Selector)**: Rê chuột và bấm để chọn cào riêng 1 khối nội dung (như 1 bài toán hay 1 công thức cụ thể).
-- **🛡️ 100% Cục Bộ & Bảo Mật Tuyệt Đối**: Chạy 100% trên máy người dùng. Không thu thập dữ liệu, không telemetry, không máy chủ trung gian.
-- **⌨️ Phím Tắt Tiện Lợi**: Nhấn `Ctrl+Shift+K` (hoặc `Cmd+Shift+K` trên Mac) để kích hoạt nhanh.
-
----
-
-## 🚀 Hướng Dẫn Cài Đặt (Dành cho Developer / Load Unpacked)
-
-1. Clone hoặc tải mã nguồn repository này về máy:
-   ```bash
-   git clone https://github.com/devnhancook/web-to-clean-markdown.git
-   ```
-2. Mở trang quản lý tiện ích trên trình duyệt:
-   - Chrome: `chrome://extensions`
-   - Edge: `edge://extensions`
-   - Brave: `brave://extensions`
-3. Bật **Developer mode** (Chế độ dành cho nhà phát triển) ở góc trên bên phải.
-4. Bấm nút **Load unpacked** (Tải tiện ích đã giải nén) và chọn thư mục `web-to-clean-markdown`.
+- **🚀 1-Click "Copy for LLM"**: Sao chép tức thì văn bản sạch kèm đầy đủ thông tin nguồn, tác giả, ngày cào.
+- **📚 Kho Lưu Trữ Học Tập (Study Vault)**: Phân loại đề thi & bài học theo từng môn, tìm kiếm siêu tốc.
+- **🔍 Chế độ đọc sách (Reader View)**: Xem lại nội dung đã lưu trực tiếp trong extension, giao diện tối mờ chống mỏi mắt.
+- **📦 Xuất File .md & Sao Lưu Toàn Bộ**: Lưu về máy để đưa vào Obsidian, Notion, Word hoặc in ra giấy.
+- **🎯 Trình Chọn Vùng Thông Minh (Smart Selector)**: Rê chuột và bấm để cào riêng 1 khối công thức hoặc 1 đoạn bình luận.
+- **🛡️ An Toàn Tuyệt Đối**: Chạy 100% trên máy của bạn, không thu thập dữ liệu cá nhân, không cần tài khoản.
 
 ---
 
 ## ⭐ Đánh Giá & Đóng Góp
 
-Nếu tiện ích này giúp bạn tiết kiệm thời gian học tập & nghiên cứu hàng ngày, hãy thả một **Star ⭐ trên GitHub** và chia sẻ tới bạn bè nhé!
+Nếu tiện ích này giúp bạn tiết kiệm thời gian học tập & nghiên cứu, hãy thả một **Star ⭐ trên GitHub** và chia sẻ tới bạn bè cùng lớp nhé!
 
-- 🐛 [Báo cáo lỗi hoặc yêu cầu tính năng mới](https://github.com/devnhancook/web-to-clean-markdown/issues)
+- 🐛 [Báo cáo lỗi hoặc góp ý tính năng mới](https://github.com/devnhancook/web-to-clean-markdown/issues)
 - 👤 Theo dõi tác giả [@devnhancook](https://github.com/devnhancook) trên GitHub
 
 ---
