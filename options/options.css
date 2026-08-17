@@ -1,27 +1,51 @@
-/* Options CSS */
+/* =========================================================
+   Web to Clean Markdown - PRO Options Styling
+   ========================================================= */
+
 :root {
-  --bg-main: #0f172a;
-  --bg-card: #1e293b;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --accent-blue: #3b82f6;
-  --accent-amber: #f59e0b;
+  --bg-space: #07090e;
+  --bg-card: rgba(18, 24, 38, 0.75);
+  --bg-input: #0a0e17;
+  --border-glass: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --text-main: #f8fafc;
+  --text-sub: #94a3b8;
+  --text-muted: #64748b;
+  --brand-blue: #3b82f6;
+  --brand-indigo: #6366f1;
+  --brand-emerald: #10b981;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg-main);
-  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg-space);
+  color: var(--text-main);
   margin: 0;
-  padding: 30px 20px;
+  padding: 40px 20px;
   display: flex;
   justify-content: center;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.glow-bg {
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(59, 130, 246, 0.1) 60%, transparent 80%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .options-container {
-  max-width: 620px;
+  max-width: 640px;
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .options-header {
@@ -34,82 +58,130 @@ body {
   gap: 14px;
 }
 
-.logo {
+.logo-icon {
   width: 44px;
   height: 44px;
-  background: var(--accent-blue);
-  border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
   font-weight: 800;
   color: #fff;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 h1 {
   font-size: 20px;
+  font-weight: 700;
   margin: 0;
 }
 
-.subtitle {
-  color: var(--text-secondary);
-  font-size: 13px;
-  margin: 2px 0 0 0;
+.pro-badge {
+  font-size: 10px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
 }
 
-.card {
+.subtitle {
+  color: var(--text-sub);
+  font-size: 13px;
+  margin: 3px 0 0 0;
+}
+
+.glass-card {
   background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
-.card h2 {
-  font-size: 15px;
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.card-header h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.section-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.2);
+  color: #c7d2fe;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.badge-star {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
 }
 
 .card-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
+  font-size: 12.5px;
+  color: var(--text-sub);
+  margin-bottom: 14px;
+  line-height: 1.4;
 }
 
 .form-group {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .opt-desc strong {
   display: block;
-  font-size: 13px;
+  font-size: 13.5px;
 }
 
 .opt-desc p {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--text-sub);
   margin: 2px 0 0 0;
 }
 
 .select-input {
   width: 100%;
-  background: #0f172a;
-  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  border: 1px solid var(--border-glass);
   color: #fff;
-  padding: 10px;
+  padding: 10px 12px;
   border-radius: 8px;
   font-size: 13px;
+  outline: none;
+}
+
+.select-input:focus {
+  border-color: var(--brand-indigo);
 }
 
 /* Switch */
 .switch {
   position: relative;
   display: inline-block;
-  width: 42px;
+  width: 44px;
   height: 24px;
   flex-shrink: 0;
 }
@@ -142,51 +214,74 @@ h1 {
 }
 
 input:checked + .slider {
-  background-color: var(--accent-blue);
+  background-color: var(--brand-indigo);
 }
 
 input:checked + .slider:before {
-  transform: translateX(18px);
+  transform: translateX(20px);
 }
 
 .links-row {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 12px;
 }
 
 .btn {
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
   border: 1px solid transparent;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, var(--brand-blue), var(--brand-indigo));
+  color: #fff;
+  font-size: 14px;
+  padding: 10px 24px;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+}
+
+.btn-save:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-star {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.btn-star:hover {
+  background: rgba(245, 158, 11, 0.25);
+}
+
+.btn-glass {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-glass);
+  color: #fff;
+}
+
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .btn-primary {
-  background: var(--accent-blue);
-  color: #fff;
-  border: none;
-  font-size: 14px;
-  padding: 10px 20px;
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #c7d2fe;
 }
 
-.btn-amber {
-  background: var(--accent-amber);
-  color: #000;
-}
-
-.btn-blue {
-  background: #2563eb;
-  color: #fff;
-}
-
-.btn-outline {
-  border-color: var(--border-color);
-  color: #fff;
+.btn-primary:hover {
+  background: rgba(99, 102, 241, 0.3);
 }
 
 .save-bar {
@@ -198,5 +293,6 @@ input:checked + .slider:before {
 
 .save-status {
   font-size: 13px;
+  font-weight: 600;
   color: #10b981;
 }

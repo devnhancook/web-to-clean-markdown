@@ -1,26 +1,43 @@
-# Web to Clean Markdown for LLM
+<p align="center">
+  <img src="assets/hero-banner.png" alt="Web to Clean Markdown Hero Banner" width="100%">
+</p>
 
-> **1-Click convert any web article, technical documentation, or blog post into clean, stripped Markdown optimized for ChatGPT, Claude, Gemini, and Obsidian.**
+# Web to Clean Markdown & Study Archiver for LLM
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Manifest V3](https://img.shields.io/badge/Manifest-V3-brightgreen.svg)](manifest.json)
-[![100% Client-Side](https://img.shields.io/badge/Privacy-100%25%20Local-purple.svg)](PRIVACY.md)
+<p align="center">
+  <strong>1-Click convert web articles, exam sheets & technical documentation into clean Markdown, plus a built-in Local Study Archiver Vault for ChatGPT, Claude, Gemini, and Obsidian.</strong>
+</p>
+
+<p align="center">
+  <a href="README.md"><b>English</b></a> •
+  <a href="README_VN.md"><b>Tiếng Việt</b></a> •
+  <a href="README_CN.md"><b>简体中文</b></a>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="manifest.json"><img src="https://img.shields.io/badge/Manifest-V3-brightgreen.svg" alt="Manifest V3"></a>
+  <a href="PRIVACY.md"><img src="https://img.shields.io/badge/Privacy-100%25%20Local-purple.svg" alt="100% Local"></a>
+  <a href="https://github.com/devnhancook/web-to-clean-markdown/stargazers"><img src="https://img.shields.io/github/stars/devnhancook/web-to-clean-markdown?style=social" alt="GitHub Stars"></a>
+</p>
 
 ---
 
-## 🌟 Why Web to Clean Markdown?
+## 🌟 Why Web to Clean Markdown & Study Vault?
 
-When copying text from modern web pages, **over 60% of the content is visual noise** (ads, cookie banners, navigation menus, sidebars). Copy-pasting directly into LLMs wastes valuable context tokens and mangles formatting.
+When studying, doing research, or collecting past exam solutions from modern websites, **over 60% of the page is visual clutter** (ads, cookie banners, navigation menus, popups). Copy-pasting directly into LLMs wastes valuable context tokens and breaks formatting.
 
-**Web to Clean Markdown** runs Mozilla Readability + Turndown directly in your browser to extract pure, semantic Markdown in less than 200ms.
+**Web to Clean Markdown** combines an ultra-fast **Clipper (<200ms)** and a **Built-in Local Study Vault** directly in your browser.
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
 - **🚀 1-Click "Copy for LLM"**: Instantly copies formatted Markdown with full YAML frontmatter (`title`, `author`, `source_url`, `clipped_at`, `reading_time`) to your clipboard.
-- **📦 "Download .md"**: Saves clean `.md` files straight to your local disk for syncing with Obsidian, Logseq, or Notion.
-- **🎯 Smart Visual Selector**: Hover and click on any specific DOM container to clip only that segment (e.g. comment thread or code snippet).
+- **📚 Local Study Vault (Archiver)**: Save articles and study sheets directly into your browser's private vault with subject tags (`Toán`, `Lý`, `Hóa`, `Văn`, `English`, `Tech`).
+- **🔍 Instant Search & Reader View**: Filter by subjects, search keywords, and preview full documents inside a clean reader modal.
+- **📦 "Download .md" & Bulk Backup**: Save individual `.md` files or export your entire study vault as JSON.
+- **🎯 Smart Visual Selector**: Hover and click on any specific DOM container to clip only that segment (e.g. formula block or comment thread).
 - **🛡️ 100% Local & Privacy-First**: Operates entirely client-side. Zero telemetry, zero analytics, no external servers.
 - **⌨️ Keyboard Shortcut**: Press `Ctrl+Shift+K` (or `Cmd+Shift+K` on Mac) for instant 1-click clipping.
 
@@ -37,17 +54,16 @@ When copying text from modern web pages, **over 60% of the content is visual noi
    - Edge: `edge://extensions`
    - Brave: `brave://extensions`
 3. Enable **Developer mode** in the top right.
-4. Click **Load unpacked** and select the `web-to-markdown-clipper` folder.
+4. Click **Load unpacked** and select the `web-to-clean-markdown` folder.
 
 ---
 
-## ☕ Support & Sponsorship
+## ⭐ Star & Feedback
 
-This project is 100% free and open-source. If it saves you time in your daily AI workflow, consider supporting:
+If this extension saves you time in your daily workflow or exam preparation, please give this repository a **Star ⭐ on GitHub** and share it with classmates!
 
-- ☕ **[Buy Me a Coffee](https://buymeacoffee.com/devnhancook)**
-- ⭐ **[Sponsor on GitHub](https://github.com/sponsors/devnhancook)**
-- 📬 **[Subscribe to Weekly AI Prompts & Tools Newsletter](https://devnhancook.substack.com)**
+- 🐛 [Report a bug or feature request](https://github.com/devnhancook/web-to-clean-markdown/issues)
+- 👤 Follow [@devnhancook](https://github.com/devnhancook) on GitHub
 
 ---
 

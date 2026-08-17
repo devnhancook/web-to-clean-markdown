@@ -3,25 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Options - Web to Clean Markdown for LLM</title>
+  <title>Preferences - Web to Clean Markdown PRO</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
+  <div class="glow-bg"></div>
   <div class="options-container">
     <header class="options-header">
       <div class="brand">
-        <div class="logo">M↓</div>
+        <div class="logo-icon">M↓</div>
         <div>
-          <h1>Web to Clean Markdown for LLM</h1>
-          <p class="subtitle">Configuration & Export Preferences • by @devnhancook</p>
+          <div class="title-row">
+            <h1>Web to Clean Markdown</h1>
+            <span class="pro-badge">PRO</span>
+          </div>
+          <p class="subtitle">Global Export & Formatting Preferences • by @devnhancook</p>
         </div>
       </div>
     </header>
 
     <main class="options-main">
       <!-- Section 1: Output Format -->
-      <div class="card">
-        <h2>📄 Markdown Formatting Options</h2>
+      <div class="glass-card">
+        <div class="card-header">
+          <h2>📄 Markdown Formatting Options</h2>
+          <span class="section-badge">CORE</span>
+        </div>
+        
         <div class="form-group">
           <label class="switch">
             <input type="checkbox" id="opt-frontmatter" checked>
@@ -29,7 +37,7 @@
           </label>
           <div class="opt-desc">
             <strong>Include YAML Frontmatter</strong>
-            <p>Prepends metadata (Title, URL, Author, Date, Word Count) at top of Markdown.</p>
+            <p>Prepends metadata (Title, Source URL, Author, Date, Reading Time) at the top of Markdown.</p>
           </div>
         </div>
 
@@ -39,36 +47,42 @@
             <span class="slider"></span>
           </label>
           <div class="opt-desc">
-            <strong>Include Author Attribution Comment</strong>
-            <p>Adds a clean footer attribution supporting the open-source project.</p>
+            <strong>Include Clean Watermark</strong>
+            <p>Appends a tiny non-intrusive footer comment linking back to this open-source project.</p>
           </div>
         </div>
       </div>
 
       <!-- Section 2: LLM Prompt Wrap -->
-      <div class="card">
-        <h2>🤖 LLM Prompt Wrapper Template</h2>
-        <p class="card-desc">Wrap clipped markdown into custom XML or markdown delimiters when copying.</p>
+      <div class="glass-card">
+        <div class="card-header">
+          <h2>🤖 AI Prompt Wrapper Template</h2>
+          <span class="section-badge">OPTIMIZATION</span>
+        </div>
+        <p class="card-desc">Automatically encapsulate clipped text in custom delimiters when copying to clipboard.</p>
         <select id="opt-prompt-format" class="select-input">
-          <option value="raw">Raw Markdown (Standard)</option>
-          <option value="xml">&lt;article_context&gt; ... &lt;/article_context&gt; (Anthropic Claude Best Practice)</option>
-          <option value="markdown">```markdown ... ``` (Code Block Encapsulation)</option>
+          <option value="raw">Raw Markdown (Standard Markdown Format)</option>
+          <option value="xml">&lt;article_context&gt; ... &lt;/article_context&gt; (Claude & Anthropic Recommended)</option>
+          <option value="markdown">```markdown ... ``` (Fenced Code Block Encapsulation)</option>
         </select>
       </div>
 
-      <!-- Section 3: Community & Support -->
-      <div class="card highlight-card">
-        <h2>☕ Support & Community</h2>
-        <p>This extension is 100% free and open source under the MIT License.</p>
+      <!-- Section 3: Open Source Community -->
+      <div class="glass-card highlight-card">
+        <div class="card-header">
+          <h2>🌟 Open Source Community</h2>
+          <span class="section-badge badge-star">MIT LICENSE</span>
+        </div>
+        <p class="card-desc">Web to Clean Markdown is 100% free, client-side, and maintained by the developer community.</p>
         <div class="links-row">
-          <a href="https://buymeacoffee.com/devnhancook" target="_blank" class="btn btn-amber">☕ Buy Me a Coffee</a>
-          <a href="https://github.com/sponsors/devnhancook" target="_blank" class="btn btn-outline">⭐ GitHub Sponsor</a>
-          <a href="https://devnhancook.substack.com" target="_blank" class="btn btn-blue">📬 AI Prompts Newsletter</a>
+          <a href="https://github.com/devnhancook/web-to-clean-markdown" target="_blank" class="btn btn-star">⭐ Star on GitHub</a>
+          <a href="https://github.com/devnhancook/web-to-clean-markdown/issues" target="_blank" class="btn btn-glass">🐛 Report an Issue</a>
+          <a href="https://github.com/devnhancook" target="_blank" class="btn btn-primary">👤 Follow @devnhancook</a>
         </div>
       </div>
 
       <div class="save-bar">
-        <button id="btn-save" class="btn btn-primary">Save Settings</button>
+        <button id="btn-save" class="btn btn-save">Save Settings</button>
         <span id="save-status" class="save-status"></span>
       </div>
     </main>

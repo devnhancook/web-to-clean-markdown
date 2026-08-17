@@ -3,136 +3,225 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Web to Clean Markdown for LLM</title>
+  <title>Web to Clean Markdown & Study Archiver</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="popup-wrapper">
+  <div class="glow-bg"></div>
+  <div class="popup-container">
     <!-- Header -->
-    <header class="app-header">
+    <header class="header">
       <div class="brand">
-        <div class="logo-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-            <polyline points="22,6 12,13 2,6"></polyline>
-          </svg>
+        <div class="logo-wrapper">
+          <div class="logo-icon">M↓</div>
+          <div class="status-pulse" title="Ready to clip"></div>
         </div>
         <div class="brand-text">
-          <span class="title">Web2Markdown</span>
-          <span class="badge-tag">LLM Ready</span>
+          <div class="title-row">
+            <h1>Web to Markdown</h1>
+            <span class="pro-badge">PRO</span>
+          </div>
+          <span class="version">v1.1 • Clipper & Study Vault</span>
         </div>
       </div>
-      <div class="sponsor-links">
-        <a href="https://buymeacoffee.com/devnhancook" target="_blank" class="sponsor-btn coffee" title="Buy me a coffee">
-          <span>☕</span> Coffee
+      <div class="header-actions">
+        <a href="https://github.com/devnhancook/web-to-clean-markdown" target="_blank" class="btn-star" title="Star this repository on GitHub">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.399 8.165-7.333-3.856-7.333 3.856 1.399-8.165-5.934-5.784 8.2-1.192zm0 5.702l-2.232 4.523-4.991.725 3.612 3.521-.852 4.969 4.463-2.347 4.463 2.347-.852-4.969 3.612-3.521-4.991-.725z"/>
+          </svg>
+          <span>Star</span>
         </a>
-        <a href="https://github.com/sponsors/devnhancook" target="_blank" class="sponsor-btn star" title="Sponsor on GitHub">
-          <span>⭐</span> Sponsor
-        </a>
+        <button id="open-options" class="btn-icon" title="Preferences">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
       </div>
     </header>
 
-    <!-- Page Info Card -->
-    <div class="article-card" id="article-card">
-      <div class="article-meta">
-        <span class="domain-tag" id="domain-badge">Scanning...</span>
-        <span class="time-tag" id="read-time-badge">0 min read</span>
+    <!-- Nav Tab Switcher with sliding pill -->
+    <div class="nav-tabs">
+      <button id="tab-btn-clipper" class="tab-btn active">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        <span>Live Clipper</span>
+      </button>
+      <button id="tab-btn-vault" class="tab-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        <span>Study Vault (<span id="vault-count-badge">0</span>)</span>
+      </button>
+    </div>
+
+    <!-- ================= VIEW 1: CLIPPER ================= -->
+    <div id="view-clipper" class="tab-content active">
+      <!-- Article Card with Glassmorphism -->
+      <div class="glass-card page-card">
+        <div class="page-meta-header">
+          <span id="domain-badge" class="badge-domain">Detecting site...</span>
+          <span id="read-time-badge" class="badge-time">-- min read</span>
+        </div>
+        <h2 id="article-title" class="article-title">Extracting clean article content...</h2>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-num" id="stat-words">0</span>
+            <span class="stat-desc">Words</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num" id="stat-tokens">0</span>
+            <span class="stat-desc">Est. Tokens</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num" id="stat-vault-total">0</span>
+            <span class="stat-desc">Vault Docs</span>
+          </div>
+        </div>
       </div>
-      <h1 class="article-title" id="article-title">Extracting clean content from tab...</h1>
-      
-      <div class="stats-grid">
-        <div class="stat-item">
-          <span class="stat-val" id="stat-words">0</span>
-          <span class="stat-lbl">Words</span>
+
+      <!-- Subject Tag Selector Row -->
+      <div class="tag-row">
+        <span class="tag-label">Category Tag:</span>
+        <select id="save-subject-tag" class="tag-select">
+          <option value="📚 Chung">📚 Chung (General)</option>
+          <option value="📐 Toán">📐 Toán (Math)</option>
+          <option value="⚡ Lý">⚡ Vật Lý (Physics)</option>
+          <option value="🧪 Hóa">🧪 Hóa Học (Chemistry)</option>
+          <option value="📖 Văn">📖 Ngữ Văn (Literature)</option>
+          <option value="🇬🇧 Tiếng Anh">🇬🇧 Tiếng Anh (English)</option>
+          <option value="🤖 AI & Tech">🤖 AI & Tech</option>
+        </select>
+      </div>
+
+      <!-- Live Markdown Preview -->
+      <div class="preview-section">
+        <div class="preview-bar">
+          <span class="preview-title">MARKDOWN PREVIEW</span>
+          <span class="preview-badge">100% Ads Stripped</span>
         </div>
-        <div class="stat-item">
-          <span class="stat-val" id="stat-tokens">~0</span>
-          <span class="stat-lbl">Est. Tokens</span>
+        <pre id="markdown-preview" class="code-preview">Reading and formatting DOM structure...</pre>
+      </div>
+
+      <!-- Actions -->
+      <div class="action-grid">
+        <div class="btn-row-primary">
+          <button id="btn-copy-llm" class="btn-glow-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span>Copy for LLM</span>
+          </button>
+
+          <button id="btn-save-vault" class="btn-glow-emerald" title="Save this article into your local vault">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            <span>Save to Vault</span>
+          </button>
         </div>
-        <div class="stat-item">
-          <span class="stat-val highlight" id="stat-clips">0</span>
-          <span class="stat-lbl">Saved Clips</span>
+
+        <div class="btn-row-secondary">
+          <button id="btn-download-md" class="btn-glass">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download .md</span>
+          </button>
+
+          <button id="btn-select-element" class="btn-glass" title="Click any visual container on the webpage">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span>Smart Selector</span>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="action-stack">
-      <button class="btn btn-primary" id="btn-copy-llm">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-        </svg>
-        <span>Copy for LLM Prompt</span>
-        <span class="btn-subtext">Optimized with YAML Frontmatter</span>
-      </button>
+    <!-- ================= VIEW 2: STUDY VAULT ================= -->
+    <div id="view-vault" class="tab-content">
+      <!-- Search & Filters -->
+      <div class="vault-header-tools">
+        <div class="search-wrapper">
+          <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="vault-search" placeholder="Search saved articles, formulas, notes..." class="search-field">
+        </div>
+        
+        <div class="filter-scroll" id="tag-filter-container">
+          <button class="chip active" data-tag="ALL">All</button>
+          <button class="chip" data-tag="📐 Toán">📐 Toán</button>
+          <button class="chip" data-tag="⚡ Lý">⚡ Lý</button>
+          <button class="chip" data-tag="🧪 Hóa">🧪 Hóa</button>
+          <button class="chip" data-tag="📖 Văn">📖 Văn</button>
+          <button class="chip" data-tag="🇬🇧 Tiếng Anh">🇬🇧 Anh</button>
+          <button class="chip" data-tag="🤖 AI & Tech">🤖 Tech</button>
+          <button class="chip" data-tag="📚 Chung">📚 Chung</button>
+        </div>
+      </div>
 
-      <div class="btn-dual-row">
-        <button class="btn btn-secondary" id="btn-download-md">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <!-- Articles Cards List -->
+      <div id="vault-list" class="vault-scroll-area">
+        <!-- Injected dynamically -->
+      </div>
+
+      <!-- Footer Bulk Actions -->
+      <div class="vault-bottom-bar">
+        <button id="btn-export-vault" class="btn-link">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          Download .md
+          <span>Backup JSON</span>
         </button>
-
-        <button class="btn btn-secondary" id="btn-select-element">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="22" y1="12" x2="18" y2="12"></line>
-            <line x1="6" y1="12" x2="2" y2="12"></line>
-            <line x1="12" y1="6" x2="12" y2="2"></line>
-            <line x1="12" y1="22" x2="12" y2="18"></line>
+        <button id="btn-clear-vault" class="btn-link text-danger">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
-          Select Element
+          <span>Clear Vault</span>
         </button>
       </div>
     </div>
 
-    <!-- Preview Collapsible -->
-    <details class="preview-section" id="preview-details">
-      <summary class="preview-summary">
-        <span>👁️ Preview Markdown</span>
-        <span class="summary-hint">Click to expand</span>
-      </summary>
-      <div class="preview-box">
-        <pre><code id="markdown-preview">Parsing page content...</code></pre>
-      </div>
-    </details>
-
-    <!-- Lead Magnet Banner (Value Anchor 3) -->
-    <div class="lead-magnet-box">
-      <div class="lead-header">
-        <span class="lead-emoji">🎁</span>
-        <div class="lead-content">
-          <div class="lead-title">Get Curated AI Prompts & Tools Weekly</div>
-          <div class="lead-desc">Join 1,000+ engineers building local AI workflows. Free newsletter.</div>
+    <!-- Reader Modal -->
+    <div id="reader-modal" class="modal-backdrop" style="display:none;">
+      <div class="modal-box">
+        <div class="modal-top">
+          <h3 id="modal-title">Article Preview</h3>
+          <button id="btn-close-modal" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-tags-bar">
+          <span id="modal-tag" class="chip-mini">Tag</span>
+          <span id="modal-date" class="chip-mini-muted">Date</span>
+          <a id="modal-url" href="#" target="_blank" class="modal-src-link">Source Link ↗</a>
+        </div>
+        <pre id="modal-body" class="modal-body-scroll"></pre>
+        <div class="modal-footer-btns">
+          <button id="modal-btn-copy" class="btn-glow-primary">📋 Copy for LLM</button>
+          <button id="modal-btn-download" class="btn-glass">📥 Download .md</button>
         </div>
       </div>
-      <a href="https://devnhancook.substack.com" target="_blank" class="lead-cta-btn">
-        Subscribe Free ➔
-      </a>
     </div>
 
-    <!-- Milestone Appreciation Banner (Hidden by default, shows after 10 clips) -->
-    <div class="milestone-box" id="milestone-box" style="display: none;">
-      <div class="milestone-text">
-        🎉 <strong>You've clipped 10 articles!</strong> If this tool saves your time, support with a coffee:
-      </div>
-      <a href="https://buymeacoffee.com/devnhancook" target="_blank" class="milestone-coffee-btn">
-        ☕ Buy Me a Coffee ($3)
-      </a>
-    </div>
-
-    <!-- Footer (Value Anchor 1) -->
-    <footer class="app-footer">
-      <span>Crafted with ☕ by <a href="https://github.com/devnhancook" target="_blank">@devnhancook</a></span>
-      <div class="footer-links">
-        <a href="https://github.com/devnhancook/web-to-clean-markdown" target="_blank">GitHub</a>
-        <span>•</span>
-        <a href="#" id="open-options">Options</a>
-      </div>
+    <!-- Footer -->
+    <footer class="footer">
+      <span>100% Local & Privacy-First • Created by <a href="https://github.com/devnhancook" target="_blank">@devnhancook</a></span>
     </footer>
   </div>
 

@@ -1,6 +1,7 @@
 /**
  * Content Script for Web to Clean Markdown for LLM
  * Author: @devnhancook
+ * Enhanced with Edge-case preservation (Code fences, Math, Absolute URLs)
  */
 
 (function () {
@@ -10,7 +11,7 @@
   let activeSelectorOverlay = null;
   let hoveredElement = null;
 
-  // Initialize Turndown Service with GFM rules
+  // Initialize Turndown Service with GFM and custom rules
   function createTurndownService(options = {}) {
     if (typeof TurndownService === 'undefined') {
       console.error('TurndownService is not loaded.');
@@ -31,6 +32,57 @@
       turndownService.use(turndownPluginGfm.gfm);
     }
 
+    // Custom Rule: Preserve code block languages (e.g. language-python, language-js)
+    turndownService.addRule('fencedCodeBlockWithLang', {
+      filter: function (node, opts) {
+        return (
+          opts.codeBlockStyle === 'fenced' &&
+          node.nodeName === 'PRE' &&
+          node.firstChild &&
+          node.firstChild.nodeName === 'CODE'
+        );
+      },
+      replacement: function (content, node) {
+        const codeEl = node.firstChild;
+        const className = codeEl.getAttribute('class') || node.getAttribute('class') || '';
+        const match = className.match(/language-([a-zA-Z0-9_-]+)/) || className.match(/lang-([a-zA-Z0-9_-]+)/);
+        const lang = match ? match[1] : '';
+        const codeText = codeEl.textContent || '';
+        return '\n\n```' + lang + '\n' + codeText.replace(/\n$/, '') + '\n```\n\n';
+      }
+    });
+
+    // Custom Rule: Resolve relative links and image sources to absolute URLs
+    turndownService.addRule('absoluteLinks', {
+      filter: ['a', 'img'],
+      replacement: function (content, node) {
+        if (node.nodeName === 'A') {
+          const href = node.getAttribute('href');
+          if (!href) return content;
+          try {
+            const absHref = new URL(href, window.location.href).href;
+            const title = node.getAttribute('title') ? ' "' + node.getAttribute('title') + '"' : '';
+            return '[' + content + '](' + absHref + title + ')';
+          } catch (e) {
+            return '[' + content + '](' + href + ')';
+          }
+        }
+        if (node.nodeName === 'IMG') {
+          const src = node.getAttribute('src');
+          if (!src) return '';
+          try {
+            const absSrc = new URL(src, window.location.href).href;
+            const alt = node.getAttribute('alt') || '';
+            const title = node.getAttribute('title') ? ' "' + node.getAttribute('title') + '"' : '';
+            return '![' + alt + '](' + absSrc + title + ')';
+          } catch (e) {
+            return '![' + (node.getAttribute('alt') || '') + '](' + src + ')';
+          }
+        }
+        return content;
+      }
+    });
+
     // Custom rule: strip useless tags
     turndownService.remove(['script', 'style', 'noscript', 'iframe', 'svg', 'button', 'form']);
 
@@ -40,7 +92,7 @@
   /**
    * Parse active page using Readability and Turndown
    */
-  function extractPageContent(options = {}) {
+  function extractPageContent(userOpts = {}) {
     const docClone = document.cloneNode(true);
 
     // Run Mozilla Readability
@@ -71,22 +123,28 @@
     const words = markdownBody.trim().split(/\s+/).filter(Boolean).length;
     const readTimeMinutes = Math.max(1, Math.ceil(words / 200));
 
-    // Construct YAML Frontmatter
-    let frontmatter = `---\n`;
-    frontmatter += `title: "${title.replace(/"/g, '\\"')}"\n`;
-    frontmatter += `source_url: "${url}"\n`;
-    if (author) frontmatter += `author: "${author.replace(/"/g, '\\"')}"\n`;
-    if (siteName) frontmatter += `site_name: "${siteName.replace(/"/g, '\\"')}"\n`;
-    frontmatter += `clipped_at: ${today}\n`;
-    frontmatter += `word_count: ${words}\n`;
-    frontmatter += `estimated_read_time: "${readTimeMinutes} min"\n`;
-    frontmatter += `---\n\n`;
+    // Construct YAML Frontmatter (if enabled)
+    let frontmatter = '';
+    if (userOpts.frontmatter !== false) {
+      frontmatter = `---\ntitle: "${title.replace(/"/g, '\\"')}"\nsource_url: "${url}"\n`;
+      if (author) frontmatter += `author: "${author.replace(/"/g, '\\"')}"\n`;
+      if (siteName) frontmatter += `site_name: "${siteName.replace(/"/g, '\\"')}"\n`;
+      frontmatter += `clipped_at: ${today}\nword_count: ${words}\nestimated_read_time: "${readTimeMinutes} min"\n---\n\n`;
+    }
 
     let finalMarkdown = frontmatter + markdownBody;
 
-    // Optional Watermark
-    if (options.includeWatermark !== false) {
+    // Optional Watermark Attribution
+    if (userOpts.watermark !== false) {
       finalMarkdown += `\n\n---\n*Clipped with [Web to Clean Markdown for LLM](https://github.com/devnhancook/web-to-clean-markdown) by @devnhancook*`;
+    }
+
+    // Optional Prompt Wrapper
+    let promptWrapped = finalMarkdown;
+    if (userOpts.promptFormat === 'xml') {
+      promptWrapped = `<article_context>\n${finalMarkdown}\n</article_context>`;
+    } else if (userOpts.promptFormat === 'markdown') {
+      promptWrapped = `\`\`\`markdown\n${finalMarkdown}\n\`\`\``;
     }
 
     return {
@@ -98,6 +156,7 @@
       wordCount: words,
       readTimeMinutes,
       markdown: finalMarkdown,
+      promptWrapped: promptWrapped,
       rawMarkdown: markdownBody
     };
   }
@@ -175,7 +234,6 @@
     document.documentElement.appendChild(host);
     activeSelectorOverlay = host;
 
-    // Events
     function onMouseMove(e) {
       const target = document.elementFromPoint(e.clientX, e.clientY);
       if (!target || target === host || host.contains(target)) return;
@@ -198,9 +256,12 @@
         const snippetMarkdown = turndownService ? turndownService.turndown(hoveredElement.outerHTML) : hoveredElement.innerText;
 
         stopElementSelector();
-        showToast('Snippet clipped to Markdown!');
+        navigator.clipboard.writeText(snippetMarkdown).then(() => {
+          showToast('✓ Snippet copied to Markdown clipboard!');
+        }).catch(() => {
+          showToast('✓ Snippet clipped!');
+        });
 
-        // Send back to popup or background
         chrome.runtime.sendMessage({
           action: 'ELEMENT_CLIPPED',
           payload: {
@@ -239,9 +300,6 @@
     }
   }
 
-  /**
-   * Non-intrusive on-page toast notification
-   */
   function showToast(msg) {
     const toast = document.createElement('div');
     toast.style.cssText = `
@@ -258,7 +316,6 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.3);
       z-index: 2147483647;
       border: 1px solid #38bdf8;
-      animation: fadeInOut 2.5s forwards;
     `;
     toast.innerText = msg;
     document.body.appendChild(toast);
