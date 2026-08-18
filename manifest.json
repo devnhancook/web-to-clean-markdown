@@ -1,15 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Web to Clean Markdown for LLM",
-  "version": "1.0.0",
-  "description": "1-click convert any web article, documentation or page into clean, stripped Markdown for ChatGPT, Claude, Gemini and Obsidian.",
+  "name": "Web to Clean Markdown & Study Archiver",
+  "version": "1.2.0",
+  "description": "1-click convert any web article into clean Markdown for LLMs. Includes Studocu/Scribd unblur, A4 PDF print & universal PDF link scanner.",
   "author": "devnhancook",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
     "downloads",
-    "clipboardWrite"
+    "clipboardWrite",
+    "cookies"
+  ],
+  "host_permissions": [
+    "*://*.studocu.com/*",
+    "*://*.scribd.com/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",

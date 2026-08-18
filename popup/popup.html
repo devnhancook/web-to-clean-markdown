@@ -21,7 +21,7 @@
             <h1>Web to Markdown</h1>
             <span class="pro-badge">PRO</span>
           </div>
-          <span class="version">v1.1 • Clipper & Study Vault</span>
+          <span class="version">v1.2 • Clipper & Doc Studio</span>
         </div>
       </div>
       <div class="header-actions">
@@ -40,22 +40,62 @@
       </div>
     </header>
 
-    <!-- Nav Tab Switcher with sliding pill -->
+    <!-- Special Studocu / Scribd Action Banner (Auto detected) -->
+    <div id="doc-helper-banner" class="doc-helper-card" style="display:none;">
+      <div class="doc-helper-header">
+        <div class="doc-badge-row">
+          <span class="doc-badge-live">⚡ DETECTED</span>
+          <span id="doc-provider-name" class="doc-provider-text">Studocu Document</span>
+        </div>
+        <button id="btn-cookie-clean" class="btn-xs-glass" title="Xóa Cookie & Tải lại để gỡ giới hạn">🍪 Reset Cookie</button>
+      </div>
+      <div class="doc-helper-body">
+        <div class="doc-helper-desc">Bypass mờ, gỡ bỏ watermark và xuất tài liệu theo chuẩn in A4 không vạch đen.</div>
+        <div class="doc-btn-grid">
+          <button id="btn-doc-clean-print" class="btn-glow-amber">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            <span>Bypass & Xuất PDF</span>
+          </button>
+          <button id="btn-doc-extract-md" class="btn-glass">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            <span>Trích xuất Text</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav Tab Switcher with sliding pill (3 Tabs) -->
     <div class="nav-tabs">
       <button id="tab-btn-clipper" class="tab-btn active">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
           <polyline points="2 17 12 22 22 17"></polyline>
           <polyline points="2 12 12 17 22 12"></polyline>
         </svg>
-        <span>Live Clipper</span>
+        <span>Clipper</span>
+      </button>
+      <button id="tab-btn-scanner" class="tab-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        <span>PDFs (<span id="pdf-count-badge">0</span>)</span>
       </button>
       <button id="tab-btn-vault" class="tab-btn">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
         </svg>
-        <span>Study Vault (<span id="vault-count-badge">0</span>)</span>
+        <span>Vault (<span id="vault-count-badge">0</span>)</span>
       </button>
     </div>
 
@@ -150,7 +190,33 @@
       </div>
     </div>
 
-    <!-- ================= VIEW 2: STUDY VAULT ================= -->
+    <!-- ================= VIEW 2: PDF SCANNER ================= -->
+    <div id="view-scanner" class="tab-content">
+      <div class="scanner-header-card">
+        <div class="scanner-status-row">
+          <span class="scanner-title">🔍 PDF Link Finder</span>
+          <button id="btn-rescan-pdfs" class="btn-xs-glass">🔄 Quét lại</button>
+        </div>
+        <p class="scanner-desc">Tự động phát hiện toàn bộ link tài liệu PDF có trên trang hiện tại.</p>
+      </div>
+
+      <div id="pdf-list-container" class="vault-scroll-area">
+        <!-- Injected dynamically -->
+      </div>
+
+      <div class="scanner-bottom-bar">
+        <button id="btn-download-all-pdfs" class="btn-glow-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Tải toàn bộ PDF</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 3: STUDY VAULT ================= -->
     <div id="view-vault" class="tab-content">
       <!-- Search & Filters -->
       <div class="vault-header-tools">

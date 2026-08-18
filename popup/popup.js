@@ -6,12 +6,22 @@
 document.addEventListener('DOMContentLoaded', async () => {
   // Elements - Header & Tabs
   const tabBtnClipper = document.getElementById('tab-btn-clipper');
+  const tabBtnScanner = document.getElementById('tab-btn-scanner');
   const tabBtnVault = document.getElementById('tab-btn-vault');
   const viewClipper = document.getElementById('view-clipper');
+  const viewScanner = document.getElementById('view-scanner');
   const viewVault = document.getElementById('view-vault');
   const vaultCountBadge = document.getElementById('vault-count-badge');
+  const pdfCountBadge = document.getElementById('pdf-count-badge');
   const statVaultTotal = document.getElementById('stat-vault-total');
   const btnOptions = document.getElementById('open-options');
+
+  // Doc Helper Card (Studocu/Scribd)
+  const docHelperBanner = document.getElementById('doc-helper-banner');
+  const docProviderName = document.getElementById('doc-provider-name');
+  const btnDocCleanPrint = document.getElementById('btn-doc-clean-print');
+  const btnDocExtractMd = document.getElementById('btn-doc-extract-md');
+  const btnCookieClean = document.getElementById('btn-cookie-clean');
 
   // Elements - Clipper View
   const elTitle = document.getElementById('article-title');
@@ -26,6 +36,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnSaveVault = document.getElementById('btn-save-vault');
   const btnDownload = document.getElementById('btn-download-md');
   const btnSelect = document.getElementById('btn-select-element');
+
+  // Elements - Scanner View
+  const pdfListContainer = document.getElementById('pdf-list-container');
+  const btnRescanPdfs = document.getElementById('btn-rescan-pdfs');
+  const btnDownloadAllPdfs = document.getElementById('btn-download-all-pdfs');
 
   // Elements - Vault View
   const vaultSearch = document.getElementById('vault-search');
@@ -47,24 +62,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let currentParsedData = null;
   let activeTabId = null;
+  let activeTabUrl = '';
   let savedUserOptions = {};
   let vaultArticles = [];
   let currentFilterTag = 'ALL';
   let activeModalArticle = null;
+  let scannedPdfs = [];
 
   // ================= TAB NAVIGATION =================
-  tabBtnClipper.addEventListener('click', () => {
-    tabBtnClipper.classList.add('active');
-    tabBtnVault.classList.remove('active');
-    viewClipper.classList.add('active');
-    viewVault.classList.remove('active');
-  });
+  function switchTab(activeBtn, activeView) {
+    [tabBtnClipper, tabBtnScanner, tabBtnVault].forEach(b => b.classList.remove('active'));
+    [viewClipper, viewScanner, viewVault].forEach(v => v.classList.remove('active'));
 
+    activeBtn.classList.add('active');
+    activeView.classList.add('active');
+  }
+
+  tabBtnClipper.addEventListener('click', () => switchTab(tabBtnClipper, viewClipper));
+  tabBtnScanner.addEventListener('click', () => {
+    switchTab(tabBtnScanner, viewScanner);
+    renderPdfScanner();
+  });
   tabBtnVault.addEventListener('click', () => {
-    tabBtnVault.classList.add('active');
-    tabBtnClipper.classList.remove('active');
-    viewVault.classList.add('active');
-    viewClipper.classList.remove('active');
+    switchTab(tabBtnVault, viewVault);
     renderVault();
   });
 
@@ -85,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   loadVault();
 
-  // ================= CLIPPER: ACTIVE TAB PARSING =================
+  // ================= ACTIVE TAB PARSING =================
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || !tab.id || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('edge://')) {
     elTitle.innerText = 'Cannot clip browser system page. Open any public website.';
@@ -97,6 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   activeTabId = tab.id;
+  activeTabUrl = tab.url;
 
   try {
     const urlObj = new URL(tab.url);
@@ -105,7 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     elDomain.innerText = 'Webpage';
   }
 
-  // Ensure content scripts are injected
+  // Ensure content scripts and engines are injected
   try {
     await chrome.scripting.executeScript({
       target: { tabId: activeTabId },
@@ -113,18 +134,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         'lib/Readability.js',
         'lib/turndown.js',
         'lib/turndown-plugin-gfm.js',
-        'content/content.js'
+        'content/content.js',
+        'content/studocu_engine.js',
+        'content/pdf_scanner.js'
       ]
     });
   } catch (err) {
     console.warn('Script injection warning:', err);
   }
 
-  // Request Clean Markdown from Content Script
+  // 1. Detect Studocu / Scribd
+  chrome.tabs.sendMessage(activeTabId, { action: 'DETECT_DOC_PROVIDER' }, (res) => {
+    if (res && res.isDocumentSite) {
+      docHelperBanner.style.display = 'flex';
+      docProviderName.innerText = res.provider === 'studocu' ? 'Studocu Document' : 'Scribd Document';
+    }
+  });
+
+  // 2. Request Clean Markdown from Content Script
   chrome.tabs.sendMessage(activeTabId, { action: 'GET_CLEAN_MARKDOWN', options: savedUserOptions }, (response) => {
     if (chrome.runtime.lastError || !response) {
       elTitle.innerText = tab.title || 'Untitled Page';
-      elPreview.innerText = 'Unable to parse page automatically. Use "Select Element" to choose content manually.';
+      elPreview.innerText = 'Unable to parse page automatically. Use "Smart Selector" or PDF Scanner.';
       return;
     }
 
@@ -134,6 +165,143 @@ document.addEventListener('DOMContentLoaded', async () => {
     elWords.innerText = (response.wordCount || 0).toLocaleString();
     elTokens.innerText = `~${Math.round((response.wordCount || 0) * 1.35).toLocaleString()}`;
     elPreview.innerText = response.markdown.slice(0, 1500) + (response.markdown.length > 1500 ? '\n\n...[Preview Truncated]' : '');
+  });
+
+  // 3. Auto Scan PDF Links on page load
+  scanPageForPdfs();
+
+  function scanPageForPdfs() {
+    chrome.tabs.sendMessage(activeTabId, { action: 'SCAN_PDF_LINKS' }, (res) => {
+      if (res && res.success && res.pdfs) {
+        scannedPdfs = res.pdfs;
+        if (pdfCountBadge) pdfCountBadge.innerText = scannedPdfs.length;
+        renderPdfScanner();
+      }
+    });
+  }
+
+  // ================= STUDOCU / SCRIBD ACTIONS =================
+  btnDocCleanPrint.addEventListener('click', () => {
+    btnDocCleanPrint.innerHTML = `<span>⏳ Đang xử lý A4...</span>`;
+    chrome.tabs.sendMessage(activeTabId, { action: 'STUDOCU_PRINT_CLEAN' }, (res) => {
+      setTimeout(() => {
+        btnDocCleanPrint.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          <span>Bypass & Xuất PDF</span>
+        `;
+      }, 2000);
+    });
+  });
+
+  btnDocExtractMd.addEventListener('click', () => {
+    btnDocExtractMd.innerText = 'Đang trích xuất...';
+    chrome.tabs.sendMessage(activeTabId, { action: 'STUDOCU_EXTRACT_MARKDOWN' }, (res) => {
+      btnDocExtractMd.innerText = 'Trích xuất Text';
+      if (res && res.success && res.markdown) {
+        currentParsedData = {
+          title: res.title,
+          markdown: res.markdown,
+          wordCount: res.markdown.split(/\s+/).length,
+          readTimeMinutes: Math.ceil(res.markdown.split(/\s+/).length / 200),
+          url: tab.url
+        };
+        elTitle.innerText = res.title;
+        elWords.innerText = currentParsedData.wordCount.toLocaleString();
+        elTokens.innerText = `~${Math.round(currentParsedData.wordCount * 1.35).toLocaleString()}`;
+        elPreview.innerText = res.markdown.slice(0, 1500) + (res.markdown.length > 1500 ? '\n\n...[Preview Truncated]' : '');
+        switchTab(tabBtnClipper, viewClipper);
+      }
+    });
+  });
+
+  btnCookieClean.addEventListener('click', () => {
+    const domain = elDomain.innerText;
+    chrome.runtime.sendMessage({ action: 'CLEAR_COOKIES_AND_RELOAD', domain }, (res) => {
+      if (res && res.success) {
+        btnCookieClean.innerText = `✓ Reset ${res.count} cookies`;
+        setTimeout(() => {
+          chrome.tabs.reload(activeTabId);
+          window.close();
+        }, 1000);
+      }
+    });
+  });
+
+  // ================= PDF SCANNER TAB RENDERING =================
+  btnRescanPdfs.addEventListener('click', () => {
+    btnRescanPdfs.innerText = 'Đang quét...';
+    scanPageForPdfs();
+    setTimeout(() => { btnRescanPdfs.innerText = '🔄 Quét lại'; }, 800);
+  });
+
+  function renderPdfScanner() {
+    pdfListContainer.innerHTML = '';
+    if (scannedPdfs.length === 0) {
+      pdfListContainer.innerHTML = `
+        <div class="vault-empty-state">
+          <p>Không tìm thấy file PDF nào trên trang này.</p>
+          <p style="margin-top:4px;color:#94a3b8;">Thử mở trang tài liệu hoặc bài báo có chứa link PDF.</p>
+        </div>
+      `;
+      btnDownloadAllPdfs.style.display = 'none';
+      return;
+    }
+
+    btnDownloadAllPdfs.style.display = 'flex';
+    btnDownloadAllPdfs.innerHTML = `<span>Tải toàn bộ (${scannedPdfs.length} file PDF)</span>`;
+
+    scannedPdfs.forEach((pdf, index) => {
+      const card = document.createElement('div');
+      card.className = 'pdf-item';
+      card.innerHTML = `
+        <div class="pdf-item-title" title="${escapeHtml(pdf.title)}">${escapeHtml(pdf.title)}</div>
+        <div class="pdf-item-url" title="${escapeHtml(pdf.url)}">${escapeHtml(pdf.url)}</div>
+        <div class="pdf-item-actions">
+          <button class="btn-mini btn-dl-single-pdf" data-url="${escapeHtml(pdf.url)}" data-filename="${escapeHtml(pdf.filename)}">📥 Tải về</button>
+          <button class="btn-mini btn-copy-pdf-url" data-url="${escapeHtml(pdf.url)}">📋 Copy Link</button>
+        </div>
+      `;
+      pdfListContainer.appendChild(card);
+    });
+
+    pdfListContainer.querySelectorAll('.btn-dl-single-pdf').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const url = btn.getAttribute('data-url');
+        const filename = btn.getAttribute('data-filename');
+        chrome.runtime.sendMessage({
+          action: 'DOWNLOAD_PDF_FILE',
+          payload: { url, filename }
+        });
+        btn.innerText = '✓ Đang tải...';
+        setTimeout(() => { btn.innerText = '📥 Tải về'; }, 1500);
+      });
+    });
+
+    pdfListContainer.querySelectorAll('.btn-copy-pdf-url').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-url');
+        await navigator.clipboard.writeText(url);
+        btn.innerText = '✓ Copied!';
+        setTimeout(() => { btn.innerText = '📋 Copy Link'; }, 1500);
+      });
+    });
+  }
+
+  btnDownloadAllPdfs.addEventListener('click', () => {
+    scannedPdfs.forEach(pdf => {
+      chrome.runtime.sendMessage({
+        action: 'DOWNLOAD_PDF_FILE',
+        payload: { url: pdf.url, filename: pdf.filename }
+      });
+    });
+    btnDownloadAllPdfs.innerHTML = `<span>✓ Đã gửi lệnh tải ${scannedPdfs.length} file!</span>`;
+    setTimeout(() => {
+      btnDownloadAllPdfs.innerHTML = `<span>Tải toàn bộ (${scannedPdfs.length} file PDF)</span>`;
+    }, 2500);
   });
 
   // ================= ACTION: SAVE TO VAULT =================
@@ -154,12 +322,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       excerpt: currentParsedData.excerpt || ''
     };
 
-    // Check if URL already in vault
     const existingIdx = vaultArticles.findIndex(a => a.url === newArticle.url);
     if (existingIdx !== -1) {
-      vaultArticles[existingIdx] = newArticle; // Update existing
+      vaultArticles[existingIdx] = newArticle;
     } else {
-      vaultArticles.unshift(newArticle); // Add to top
+      vaultArticles.unshift(newArticle);
     }
 
     chrome.storage.local.set({ vaultArticles }, () => {
@@ -280,7 +447,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       vaultList.appendChild(card);
     });
 
-    // Attach card event listeners
+    // Card listeners
     vaultList.querySelectorAll('.btn-view-doc').forEach(b => {
       b.addEventListener('click', () => openReaderModal(b.getAttribute('data-id')));
     });

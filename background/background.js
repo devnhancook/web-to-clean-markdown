@@ -1,5 +1,5 @@
 /**
- * Background Service Worker for Web to Clean Markdown for LLM
+ * Background Service Worker for Web to Clean Markdown & Study Archiver
  * Author: @devnhancook
  */
 
@@ -22,7 +22,17 @@ chrome.commands.onCommand.addListener(async (command) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'DOWNLOAD_MARKDOWN') {
     handleDownloadMarkdown(message.payload, sendResponse);
-    return true; // Keep message channel open for async response
+    return true;
+  }
+
+  if (message.action === 'DOWNLOAD_PDF_FILE') {
+    handleDownloadDirectUrl(message.payload, sendResponse);
+    return true;
+  }
+
+  if (message.action === 'CLEAR_COOKIES_AND_RELOAD') {
+    handleClearCookiesAndReload(message.domain, sendResponse);
+    return true;
   }
 
   if (message.action === 'INCREMENT_CLIP_COUNTER') {
@@ -64,6 +74,52 @@ function handleDownloadMarkdown({ filename, content }, sendResponse) {
 }
 
 /**
+ * Download direct PDF url
+ */
+function handleDownloadDirectUrl({ url, filename }, sendResponse) {
+  try {
+    chrome.downloads.download(
+      {
+        url: url,
+        filename: sanitizeFilename(filename || 'document.pdf'),
+        saveAs: false
+      },
+      (downloadId) => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        } else {
+          sendResponse({ success: true, downloadId });
+        }
+      }
+    );
+  } catch (err) {
+    sendResponse({ success: false, error: err.message });
+  }
+}
+
+/**
+ * Clear site cookies and reload active tab
+ */
+async function handleClearCookiesAndReload(domain, sendResponse) {
+  try {
+    const allCookies = await chrome.cookies.getAll({});
+    let count = 0;
+    for (const cookie of allCookies) {
+      if (domain && cookie.domain.includes(domain)) {
+        let cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
+        const protocol = cookie.secure ? 'https:' : 'http:';
+        const url = `${protocol}//${cleanDomain}${cookie.path}`;
+        await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
+        count++;
+      }
+    }
+    sendResponse({ success: true, count });
+  } catch (e) {
+    sendResponse({ success: false, error: e.message });
+  }
+}
+
+/**
  * Increment clip count for milestone appreciation
  */
 function incrementClipCounter(sendResponse) {
@@ -82,7 +138,7 @@ function sanitizeFilename(name) {
   return name
     .replace(/[<>:"/\\|?*]/g, '')
     .trim()
-    .slice(0, 100) + '.md';
+    .slice(0, 100);
 }
 
 /**
@@ -96,7 +152,9 @@ async function injectScriptsIfRequired(tabId) {
         'lib/Readability.js',
         'lib/turndown.js',
         'lib/turndown-plugin-gfm.js',
-        'content/content.js'
+        'content/content.js',
+        'content/studocu_engine.js',
+        'content/pdf_scanner.js'
       ]
     });
   } catch (err) {

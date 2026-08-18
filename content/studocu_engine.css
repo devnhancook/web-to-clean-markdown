@@ -1,0 +1,156 @@
+/* =========================================================
+   Studocu & Scribd Unblur & Clean A4 Print Engine CSS
+   ========================================================= */
+
+/* Unblur and remove paywalls during live viewing */
+html, body {
+  overflow: auto !important;
+  height: auto !important;
+  user-select: text !important;
+}
+
+/* Common paywalls & watermark overlays on Studocu & Scribd */
+#upgrade-overlay,
+.banner-wrapper,
+[class*="paywall"],
+[class*="overlay"],
+#page-container-wrapper + div,
+.advertisement,
+.doc_watermark,
+.scribd_watermark,
+.between_page_ads,
+.promo_banner,
+.page_blur,
+.blurred_page:after,
+.blurred_page:before,
+.text_layer_blurred,
+.autofill_page_blur {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -9999 !important;
+}
+
+/* Force visible on text & document wrappers */
+.pf, .pc, #document-wrapper, .document_scroller, .page_missing_explanation {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Unblur blurred text layers on Scribd */
+.blurred_page {
+  filter: none !important;
+  -webkit-filter: none !important;
+  user-select: text !important;
+}
+
+/* Clean Viewer Container (Rendered for Printing) */
+#clean-viewer-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: #f6f7fb !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 0;
+  z-index: 2147483640;
+}
+
+.std-page {
+  position: relative !important;
+  background-color: white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  display: block !important;
+  overflow: hidden !important;
+  border: none !important;
+}
+
+/* Fix black line artifact at the bottom of pages */
+.std-page::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background-color: white !important;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.layer-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.layer-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.layer-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  overflow: visible !important;
+}
+
+.layer-text .pc,
+.layer-text .pc * {
+  transform: none !important;
+  overflow: visible !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* Print Setup for Clean A4 */
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  body {
+    background-color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body > *:not(#clean-viewer-container) {
+    display: none !important;
+  }
+
+  #clean-viewer-container {
+    position: static !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .std-page {
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    box-shadow: none !important;
+    page-break-after: always !important;
+    break-after: always !important;
+    border: none !important;
+  }
+}
