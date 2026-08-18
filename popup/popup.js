@@ -467,7 +467,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.body.appendChild(viewerContainer);
-    
+
+    // Auto cleanup listener after print completes or cancels
+    const mediaQueryList = window.matchMedia('print');
+    const cleanupHandler = (mql) => {
+      if (!mql.matches) {
+        const c = document.getElementById('clean-viewer-container');
+        if (c) c.remove();
+        mediaQueryList.removeEventListener('change', cleanupHandler);
+      }
+    };
+    mediaQueryList.addEventListener('change', cleanupHandler);
+
     setTimeout(() => {
       window.print();
     }, 1000);
