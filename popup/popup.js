@@ -143,7 +143,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('Script injection warning:', err);
   }
 
-  // 1. Detect Studocu / Scribd
+  // 1. Detect Studocu / Scribd directly from URL + Content Script
+  const lowerUrl = (activeTabUrl || '').toLowerCase();
+  const isDocDomain = lowerUrl.includes('studocu.') || lowerUrl.includes('scribd.');
+  if (isDocDomain) {
+    docHelperBanner.style.display = 'flex';
+    docProviderName.innerText = lowerUrl.includes('studocu.') ? 'Studocu Document' : 'Scribd Document';
+  }
+
   chrome.tabs.sendMessage(activeTabId, { action: 'DETECT_DOC_PROVIDER' }, (res) => {
     if (res && res.isDocumentSite) {
       docHelperBanner.style.display = 'flex';

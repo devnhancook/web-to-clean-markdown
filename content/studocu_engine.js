@@ -22,14 +22,16 @@
       styleEl.textContent = `
         html, body { overflow: auto !important; height: auto !important; user-select: text !important; }
         #upgrade-overlay, .banner-wrapper, [class*="paywall"], [class*="overlay"],
+        [class*="preview_overlay"], [class*="blur_overlay"], [class*="modal_wrapper"],
         #page-container-wrapper + div, .advertisement, .doc_watermark, .scribd_watermark,
-        .between_page_ads, .promo_banner, .page_blur, .text_layer_blurred, .autofill_page_blur {
+        .between_page_ads, .promo_banner, .page_blur, .text_layer_blurred, .autofill_page_blur,
+        div[class*="upsell"], div[class*="unlock_prompt"], div[class*="preview-banner"] {
           display: none !important; opacity: 0 !important; pointer-events: none !important; z-index: -9999 !important;
         }
-        .pf, .pc, #document-wrapper, .document_scroller, .page_missing_explanation {
+        .pf, .pc, #document-wrapper, .document_scroller, .page_missing_explanation, .document-wrapper, #viewer-wrapper {
           display: block !important; visibility: visible !important; opacity: 1 !important; filter: none !important; -webkit-filter: none !important;
         }
-        .blurred_page { filter: none !important; -webkit-filter: none !important; user-select: text !important; }
+        .blurred_page, [class*="blur"] { filter: none !important; -webkit-filter: none !important; user-select: text !important; }
         .blurred_page:before, .blurred_page:after { display: none !important; }
       `;
       document.head.appendChild(styleEl);
@@ -385,8 +387,9 @@
       return true;
     }
     if (msg.action === 'DETECT_DOC_PROVIDER') {
-      const isStudocu = window.location.hostname.includes('studocu.com');
-      const isScribd = window.location.hostname.includes('scribd.com');
+      const hostname = window.location.hostname.toLowerCase();
+      const isStudocu = hostname.includes('studocu.');
+      const isScribd = hostname.includes('scribd.');
       sendResponse({
         isDocumentSite: isStudocu || isScribd,
         provider: isStudocu ? 'studocu' : (isScribd ? 'scribd' : null),

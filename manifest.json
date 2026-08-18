@@ -14,7 +14,9 @@
   ],
   "host_permissions": [
     "*://*.studocu.com/*",
-    "*://*.scribd.com/*"
+    "*://*.studocu.vn/*",
+    "*://*.scribd.com/*",
+    "*://*.scribd.vdownloaders.com/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",
