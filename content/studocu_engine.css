@@ -48,11 +48,6 @@ html, body {
   user-select: text !important;
 }
 
-/* Clean Viewer Container (Rendered for Printing) */
-body > *:not(#clean-viewer-container):not(#w2m-selector-root) {
-  display: none !important;
-}
-
 #clean-viewer-container {
   position: absolute;
   top: 0;
