@@ -178,17 +178,43 @@
   }
 
   /**
+   * Auto-scroll loop to ensure all lazy-loaded pages are rendered into the DOM
+   */
+  async function autoScrollToLoadAllPages(onProgress) {
+    const totalHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+    const viewportHeight = window.innerHeight;
+    let currentScroll = 0;
+    const step = viewportHeight * 0.85;
+
+    while (currentScroll < totalHeight) {
+      window.scrollTo(0, currentScroll);
+      currentScroll += step;
+      if (onProgress) onProgress(Math.min(100, Math.round((currentScroll / totalHeight) * 100)));
+      await new Promise(r => setTimeout(r, 120)); // Allow DOM to load
+    }
+    // Scroll back to top
+    window.scrollTo(0, 0);
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  /**
    * Build clean A4 printable viewer
    */
-  function buildCleanPrintableDocument() {
+  async function buildCleanPrintableDocument() {
     unblurDocument();
+
+    // 1. Check if lazy loaded pages exist and trigger auto-scroll if needed
+    let pages = document.querySelectorAll('div[data-page-index]');
+    if (pages.length <= 3) {
+      await autoScrollToLoadAllPages();
+      pages = document.querySelectorAll('div[data-page-index]');
+    }
 
     // 1. Remove any existing clean viewer
     const existing = document.getElementById('clean-viewer-container');
     if (existing) existing.remove();
 
     // 2. Identify pages (Studocu or Scribd)
-    let pages = document.querySelectorAll('div[data-page-index]');
     if (pages.length === 0) {
       pages = document.querySelectorAll('.document_scroller .page_missing_explanation, .document_scroller .outer_page, .document_column .page_missing_explanation');
     }
