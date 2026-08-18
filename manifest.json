@@ -18,6 +18,28 @@
     "*://*.scribd.com/*",
     "*://*.scribd.vdownloaders.com/*"
   ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.studocu.com/*",
+        "*://*.studocu.vn/*",
+        "*://*.scribd.com/*"
+      ],
+      "css": ["content/studocu_engine.css"],
+      "js": ["content/studocu_engine.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content/studocu_engine.css"],
+      "matches": [
+        "*://*.studocu.com/*",
+        "*://*.studocu.vn/*",
+        "*://*.scribd.com/*"
+      ]
+    }
+  ],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
