@@ -181,8 +181,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ================= STUDOCU / SCRIBD ACTIONS =================
-  btnDocCleanPrint.addEventListener('click', () => {
+  btnDocCleanPrint.addEventListener('click', async () => {
     btnDocCleanPrint.innerHTML = `<span>⏳ Đang xử lý A4...</span>`;
+    
+    // Explicitly inject studocu_engine.css to guarantee exact print layout
+    try {
+      await chrome.scripting.insertCSS({
+        target: { tabId: activeTabId },
+        files: ['content/studocu_engine.css']
+      });
+    } catch (e) {
+      console.warn('CSS insert warning:', e);
+    }
+
     chrome.tabs.sendMessage(activeTabId, { action: 'STUDOCU_PRINT_CLEAN' }, (res) => {
       setTimeout(() => {
         btnDocCleanPrint.innerHTML = `

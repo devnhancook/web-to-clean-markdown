@@ -279,13 +279,14 @@
 
     setTimeout(() => {
       window.print();
-    }, 800);
+    }, 1000);
 
     return { success: true, count: pages.length };
   }
 
   /**
    * Extract document text content directly into clean Markdown
+   * Reconstructs lines based on vertical DOM coordinates to prevent words bunching up.
    */
   function extractDocToMarkdown() {
     unblurDocument();
@@ -295,21 +296,67 @@
     let fullMarkdown = `# ${title}\n\n`;
 
     if (pages.length === 0) {
-      // Fallback
       return { success: false, markdown: '' };
     }
 
     pages.forEach((page, idx) => {
       fullMarkdown += `\n\n## --- Trang ${idx + 1} ---\n\n`;
-      const textEls = page.querySelectorAll('.pc span, .t, p');
-      if (textEls.length > 0) {
-        let pageText = '';
-        textEls.forEach(el => {
-          const text = el.innerText.trim();
-          if (text) pageText += text + ' ';
-        });
-        fullMarkdown += pageText.trim() + '\n';
+      
+      // Collect all text elements with their layout positions
+      const textElements = Array.from(page.querySelectorAll('.pc span, .pc .t, .pc div, p, span.t'));
+      
+      if (textElements.length === 0) {
+        fullMarkdown += (page.innerText || '').trim() + '\n';
+        return;
       }
+
+      // Group text elements by vertical line position (top coordinate)
+      const lineMap = new Map();
+      const LINE_TOLERANCE = 4; // pixels tolerance for same line
+
+      textElements.forEach(el => {
+        const text = el.innerText ? el.innerText.trim() : '';
+        if (!text) return;
+        // Ignore hidden or duplicate container text if child exists
+        if (el.children.length > 0 && Array.from(el.children).some(c => c.classList && (c.classList.contains('t') || c.classList.contains('c')))) {
+          return;
+        }
+
+        const rect = el.getBoundingClientRect();
+        const top = rect.top;
+        const left = rect.left;
+
+        // Find existing line bucket
+        let matchedLineKey = null;
+        for (const lineKey of lineMap.keys()) {
+          if (Math.abs(top - lineKey) <= LINE_TOLERANCE) {
+            matchedLineKey = lineKey;
+            break;
+          }
+        }
+
+        if (matchedLineKey !== null) {
+          lineMap.get(matchedLineKey).push({ left, text });
+        } else {
+          lineMap.set(top, [{ left, text }]);
+        }
+      });
+
+      // Sort lines top to bottom
+      const sortedTops = Array.from(lineMap.keys()).sort((a, b) => a - b);
+      let pageText = '';
+
+      sortedTops.forEach(topKey => {
+        const lineItems = lineMap.get(topKey);
+        // Sort items left to right
+        lineItems.sort((a, b) => a.left - b.left);
+        const lineContent = lineItems.map(item => item.text).join(' ');
+        if (lineContent.trim()) {
+          pageText += lineContent.trim() + '\n\n';
+        }
+      });
+
+      fullMarkdown += (pageText.trim() || page.innerText.trim()) + '\n';
     });
 
     return {
