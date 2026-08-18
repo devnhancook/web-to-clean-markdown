@@ -178,45 +178,51 @@
   }
 
   /**
-   * Auto-scroll loop to ensure all lazy-loaded pages are rendered into the DOM
+   * Auto-scroll harvester: scrolls through entire document to force Studocu/Scribd
+   * to load 100% of lazy-loaded pages before building clean print view.
    */
-  async function autoScrollToLoadAllPages(onProgress) {
-    const totalHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-    const viewportHeight = window.innerHeight;
-    let currentScroll = 0;
-    const step = viewportHeight * 0.85;
-
-    while (currentScroll < totalHeight) {
-      window.scrollTo(0, currentScroll);
-      currentScroll += step;
-      if (onProgress) onProgress(Math.min(100, Math.round((currentScroll / totalHeight) * 100)));
-      await new Promise(r => setTimeout(r, 120)); // Allow DOM to load
+  async function forceLazyLoadAllPages(onProgress) {
+    unblurDocument();
+    
+    const scrollContainer = document.scrollingElement || document.documentElement || document.body;
+    const originalScrollPos = scrollContainer.scrollTop;
+    const totalHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+    const step = Math.max(window.innerHeight * 0.8, 600);
+    
+    // Quick down-scroll pass to trigger intersection observers
+    for (let pos = 0; pos <= totalHeight; pos += step) {
+      window.scrollTo({ top: pos, behavior: 'instant' });
+      unblurDocument();
+      if (typeof onProgress === 'function') {
+        const pagesNow = document.querySelectorAll('div[data-page-index], .document_scroller .outer_page, .document_column .page_missing_explanation').length;
+        onProgress(pagesNow);
+      }
+      await new Promise(r => setTimeout(r, 60));
     }
-    // Scroll back to top
-    window.scrollTo(0, 0);
+    
+    // Wait a brief moment for DOM nodes to settle
     await new Promise(r => setTimeout(r, 400));
+    unblurDocument();
+    window.scrollTo({ top: originalScrollPos, behavior: 'instant' });
   }
 
   /**
-   * Build clean A4 printable viewer
+   * Build clean A4 printable viewer with full lazy-load guarantee
    */
   async function buildCleanPrintableDocument() {
     unblurDocument();
 
-    // 1. Check if lazy loaded pages exist and trigger auto-scroll if needed
-    let pages = document.querySelectorAll('div[data-page-index]');
-    if (pages.length <= 3) {
-      await autoScrollToLoadAllPages();
-      pages = document.querySelectorAll('div[data-page-index]');
-    }
+    // 1. Force lazy-load of all pages
+    await forceLazyLoadAllPages();
 
-    // 1. Remove any existing clean viewer
+    // 2. Remove any existing clean viewer
     const existing = document.getElementById('clean-viewer-container');
     if (existing) existing.remove();
 
-    // 2. Identify pages (Studocu or Scribd)
+    // 3. Identify pages (Studocu or Scribd)
+    let pages = document.querySelectorAll('div[data-page-index]');
     if (pages.length === 0) {
-      pages = document.querySelectorAll('.document_scroller .page_missing_explanation, .document_scroller .outer_page, .document_column .page_missing_explanation');
+      pages = document.querySelectorAll('.document_scroller .page_missing_explanation, .document_scroller .outer_page, .document_column .page_missing_explanation, .document-wrapper .page');
     }
 
     if (pages.length === 0) {
@@ -403,13 +409,20 @@
       return true;
     }
     if (msg.action === 'STUDOCU_PRINT_CLEAN') {
-      const res = buildCleanPrintableDocument();
-      sendResponse(res);
+      buildCleanPrintableDocument().then(res => {
+        sendResponse(res);
+      }).catch(err => {
+        sendResponse({ success: false, error: err.message });
+      });
       return true;
     }
     if (msg.action === 'STUDOCU_EXTRACT_MARKDOWN') {
-      const res = extractDocToMarkdown();
-      sendResponse(res);
+      forceLazyLoadAllPages().then(() => {
+        const res = extractDocToMarkdown();
+        sendResponse(res);
+      }).catch(err => {
+        sendResponse({ success: false, error: err.message });
+      });
       return true;
     }
     if (msg.action === 'DETECT_DOC_PROVIDER') {
