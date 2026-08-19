@@ -10,80 +10,115 @@
   function scanPdfLinks() {
     const pdfMap = new Map();
 
-    // 1. Scan <a> tags
+    function addPdf(rawUrl, titleHint, sourceHint) {
+      if (!rawUrl || typeof rawUrl !== 'string') return;
+      
+      // Check if rawUrl itself is PDF or contains a nested PDF URL in query params (like pdf.js, google viewer, etc.)
+      const extractedUrls = extractAllPdfUrlsFromTarget(rawUrl);
+      extractedUrls.forEach(targetUrl => {
+        try {
+          const absUrl = new URL(targetUrl, window.location.href).href;
+          if (!pdfMap.has(absUrl)) {
+            const filename = extractFilename(absUrl);
+            pdfMap.set(absUrl, {
+              url: absUrl,
+              filename: filename,
+              title: (titleHint || filename).trim(),
+              source: sourceHint || 'scanner'
+            });
+          }
+        } catch (e) {}
+      });
+    }
+
+    // 1. Scan all <a> tags
     document.querySelectorAll('a[href]').forEach(a => {
       const href = a.getAttribute('href');
-      if (!href) return;
+      const text = (a.innerText || a.getAttribute('title') || a.getAttribute('aria-label') || '').trim();
+      addPdf(href, text, 'link');
+    });
 
-      try {
-        const absUrl = new URL(href, window.location.href).href;
-        if (isPdfUrl(absUrl)) {
-          const text = (a.innerText || a.getAttribute('title') || a.getAttribute('aria-label') || '').trim();
-          const filename = extractFilename(absUrl);
-          pdfMap.set(absUrl, {
-            url: absUrl,
-            filename: filename,
-            title: text || filename,
-            source: 'anchor'
-          });
-        }
-      } catch (e) {
-        // Invalid URL ignore
+    // 2. Scan <embed>, <iframe>, <object> tags (including viewer.html?file=... URLs)
+    document.querySelectorAll('embed[src], iframe[src], object[data]').forEach(el => {
+      const src = el.getAttribute('src') || el.getAttribute('data');
+      const title = el.getAttribute('title') || 'Embedded PDF Document';
+      addPdf(src, title, 'embed');
+    });
+
+    // 3. Scan elements with custom data attributes or src attributes
+    document.querySelectorAll('[data-pdf], [data-pdf-url], [data-download-url], [data-src], [data-file], [data-url]').forEach(el => {
+      const val = el.getAttribute('data-pdf') || el.getAttribute('data-pdf-url') || el.getAttribute('data-download-url') || el.getAttribute('data-src') || el.getAttribute('data-file') || el.getAttribute('data-url');
+      const text = el.innerText.trim() || el.getAttribute('title') || '';
+      addPdf(val, text, 'data-attr');
+    });
+
+    // 4. Scan button onclick or script links matching .pdf
+    document.querySelectorAll('button[onclick], a[onclick], div[onclick]').forEach(el => {
+      const onclickAttr = el.getAttribute('onclick') || '';
+      const matches = onclickAttr.match(/https?:\/\/[^\s'"]+\.pdf[^\s'"]*|\/[^\s'"]+\.pdf[^\s'"]*/gi);
+      if (matches) {
+        matches.forEach(m => addPdf(m, el.innerText.trim(), 'onclick'));
       }
-    });
-
-    // 2. Scan <embed> and <iframe> tags
-    document.querySelectorAll('embed[src], iframe[src]').forEach(el => {
-      const src = el.getAttribute('src');
-      if (!src) return;
-      try {
-        const absUrl = new URL(src, window.location.href).href;
-        if (isPdfUrl(absUrl) || (el.getAttribute('type') || '').includes('pdf')) {
-          const filename = extractFilename(absUrl);
-          pdfMap.set(absUrl, {
-            url: absUrl,
-            filename: filename,
-            title: `Embedded: ${filename}`,
-            source: 'embed'
-          });
-        }
-      } catch (e) {}
-    });
-
-    // 3. Scan elements with data-pdf, data-url, data-href
-    document.querySelectorAll('[data-pdf], [data-pdf-url], [data-download-url]').forEach(el => {
-      const val = el.getAttribute('data-pdf') || el.getAttribute('data-pdf-url') || el.getAttribute('data-download-url');
-      if (!val) return;
-      try {
-        const absUrl = new URL(val, window.location.href).href;
-        if (isPdfUrl(absUrl)) {
-          const text = el.innerText.trim();
-          const filename = extractFilename(absUrl);
-          pdfMap.set(absUrl, {
-            url: absUrl,
-            filename: filename,
-            title: text || filename,
-            source: 'data-attribute'
-          });
-        }
-      } catch (e) {}
     });
 
     return Array.from(pdfMap.values());
   }
 
+  function extractAllPdfUrlsFromTarget(target) {
+    const results = [];
+    if (!target) return results;
+
+    // Check direct
+    if (isPdfUrl(target)) {
+      results.push(target);
+    }
+
+    // Check if target is a viewer URL containing file=..., url=..., doc=..., src=...
+    try {
+      const urlObj = new URL(target, window.location.href);
+      const params = ['file', 'url', 'doc', 'src', 'pdf', 'target', 'link'];
+      params.forEach(p => {
+        const val = urlObj.searchParams.get(p);
+        if (val && isPdfUrl(val)) {
+          results.push(val);
+        }
+      });
+    } catch (e) {}
+
+    return results;
+  }
+
   function isPdfUrl(url) {
-    if (!url) return false;
-    const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
-    return cleanUrl.endsWith('.pdf') || url.toLowerCase().includes('.pdf?') || url.includes('/pdf/') || url.includes('format=pdf') || url.includes('type=pdf');
+    if (!url || typeof url !== 'string') return false;
+    const lower = url.toLowerCase();
+    
+    // Quick patterns
+    if (lower.includes('.pdf')) return true;
+    if (lower.includes('/pdf/')) return true;
+    if (lower.includes('format=pdf') || lower.includes('type=pdf') || lower.includes('response-content-type=application/pdf')) return true;
+    if (lower.includes('drive.google.com/file') || lower.includes('docs.google.com/viewer')) return true;
+    
+    return false;
   }
 
   function extractFilename(url) {
     try {
-      const path = new URL(url).pathname;
+      const urlObj = new URL(url);
+      
+      // If filename parameter is explicitly present in query
+      const fnParam = urlObj.searchParams.get('filename') || urlObj.searchParams.get('name') || urlObj.searchParams.get('file');
+      if (fnParam && fnParam.toLowerCase().endsWith('.pdf')) {
+        return decodeURIComponent(fnParam);
+      }
+
+      const path = urlObj.pathname;
       const base = path.split('/').filter(Boolean).pop();
-      if (base && base.toLowerCase().endsWith('.pdf')) {
-        return decodeURIComponent(base);
+      if (base) {
+        const cleanBase = decodeURIComponent(base.split('?')[0].split('#')[0]);
+        if (cleanBase.toLowerCase().endsWith('.pdf')) {
+          return cleanBase;
+        }
+        return `${cleanBase}.pdf`;
       }
       return 'document.pdf';
     } catch (e) {

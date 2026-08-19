@@ -174,12 +174,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     elPreview.innerText = response.markdown.slice(0, 1500) + (response.markdown.length > 1500 ? '\n\n...[Preview Truncated]' : '');
   });
 
-  // 3. Auto Scan PDF Links on page load
+  // 3. Auto Scan PDF Links on page load (with retry for dynamic/iframe viewers)
   scanPageForPdfs();
+  setTimeout(scanPageForPdfs, 600);
+  setTimeout(scanPageForPdfs, 1500);
 
   function scanPageForPdfs() {
     chrome.tabs.sendMessage(activeTabId, { action: 'SCAN_PDF_LINKS' }, (res) => {
-      if (res && res.success && res.pdfs) {
+      if (res && res.success && Array.isArray(res.pdfs)) {
         scannedPdfs = res.pdfs;
         if (pdfCountBadge) pdfCountBadge.innerText = scannedPdfs.length;
         renderPdfScanner();
