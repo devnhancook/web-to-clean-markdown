@@ -107,17 +107,17 @@
       
       // If filename parameter is explicitly present in query
       const fnParam = urlObj.searchParams.get('filename') || urlObj.searchParams.get('name') || urlObj.searchParams.get('file');
-      if (fnParam && fnParam.toLowerCase().endsWith('.pdf')) {
-        return decodeURIComponent(fnParam);
+      if (fnParam) {
+        const cleanFn = decodeURIComponent(fnParam.split('?')[0].split('#')[0]);
+        if (cleanFn.toLowerCase().endsWith('.pdf')) return cleanFn;
+        return `${cleanFn}.pdf`;
       }
 
       const path = urlObj.pathname;
       const base = path.split('/').filter(Boolean).pop();
       if (base) {
-        const cleanBase = decodeURIComponent(base.split('?')[0].split('#')[0]);
-        if (cleanBase.toLowerCase().endsWith('.pdf')) {
-          return cleanBase;
-        }
+        let cleanBase = decodeURIComponent(base.split('?')[0].split('#')[0]);
+        cleanBase = cleanBase.replace(/\.pdf$/i, ''); // Strip trailing .pdf if any
         return `${cleanBase}.pdf`;
       }
       return 'document.pdf';
