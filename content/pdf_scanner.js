@@ -61,6 +61,18 @@
       }
     });
 
+    // 5. Scan inline scripts and entire HTML for hidden or dynamic PDF URLs
+    try {
+      const htmlContent = document.documentElement ? document.documentElement.innerHTML : '';
+      const pdfRegex = /https?:\/\/[a-zA-Z0-9_\-\.\/]+?\.(?:pdf)(?:\?[a-zA-Z0-9_\-=&%.\/]*)?/gi;
+      const foundMatches = htmlContent.match(pdfRegex);
+      if (foundMatches) {
+        foundMatches.forEach(raw => {
+          addPdf(raw, '', 'page-source');
+        });
+      }
+    } catch (e) {}
+
     return Array.from(pdfMap.values());
   }
 

@@ -28,6 +28,17 @@
       "css": ["content/studocu_engine.css"],
       "js": ["content/studocu_engine.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "lib/Readability.js",
+        "lib/turndown.js",
+        "lib/turndown-plugin-gfm.js",
+        "content/content.js",
+        "content/pdf_scanner.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
