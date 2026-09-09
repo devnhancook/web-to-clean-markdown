@@ -123,9 +123,11 @@ body > *:not(#clean-viewer-container) {
 }
 
 /* CAP-2 backstop: neutralize any blur/cover styling surviving on clones
-   (site stylesheets still apply to copied class attributes). */
+   (site stylesheets still apply to copied class attributes). The text-layer
+   wildcard covers inline-filtered descendants with no blur keyword in class. */
 #clean-viewer-container [class*="blur"],
 #clean-viewer-container .blurred_page,
+#clean-viewer-container .layer-text *,
 #clean-viewer-container img {
   filter: none !important;
   -webkit-filter: none !important;

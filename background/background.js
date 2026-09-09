@@ -30,11 +30,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === 'CLEAR_COOKIES_AND_RELOAD') {
-    handleClearCookiesAndReload(message.domain, sendResponse);
-    return true;
-  }
-
   if (message.action === 'ENTRY_AUTO_RESET_REQUEST') {
     handleEntryAutoReset(message, sender, sendResponse);
     return true;
@@ -103,39 +98,37 @@ function handleDownloadDirectUrl({ url, filename }, sendResponse) {
 }
 
 /**
- * Remove all cookies whose domain includes the given substring.
- * Shared by the manual button flow and the entry auto-reset gatekeeper.
- * Returns the number of cookies removed.
+ * Provider key (exact) -> owned domain suffixes. Cookie matching is
+ * suffix-with-dot-boundary, so lookalikes like evil-studocu.com never match.
  */
-async function clearCookiesForDomain(domain) {
-  const allCookies = await chrome.cookies.getAll({});
-  let count = 0;
-  for (const cookie of allCookies) {
-    if (domain && cookie.domain.includes(domain)) {
-      const cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
-      const protocol = cookie.secure ? 'https:' : 'http:';
-      const url = `${protocol}//${cleanDomain}${cookie.path}`;
-      await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
-      count++;
-    }
-  }
-  return count;
+const DOC_DOMAIN_SUFFIXES = {
+  studocu: ['studocu.com', 'studocu.vn'],
+  scribd: ['scribd.com']
+};
+
+function cookieBelongsToProvider(cookieDomain, provider) {
+  const suffixes = DOC_DOMAIN_SUFFIXES[provider] || [];
+  const lower = (cookieDomain || '').toLowerCase().replace(/^\./, '');
+  return suffixes.some(s => lower === s || lower.endsWith('.' + s));
 }
 
 /**
- * Clear site cookies and reload active tab
+ * Remove all cookies owned by the given provider key ('studocu' | 'scribd').
+ * Used solely by the entry auto-reset gatekeeper.
+ * Returns the number of cookies removed.
  */
-async function handleClearCookiesAndReload(domain, sendResponse) {
-  try {
-    if (!isAllowedDocDomain(domain)) {
-      sendResponse({ success: false, error: 'domain-not-allowed' });
-      return;
-    }
-    const count = await clearCookiesForDomain(domain);
-    sendResponse({ success: true, count });
-  } catch (e) {
-    sendResponse({ success: false, error: e.message });
+async function clearCookiesForDomain(provider) {
+  const allCookies = await chrome.cookies.getAll({});
+  let count = 0;
+  for (const cookie of allCookies) {
+    if (!cookieBelongsToProvider(cookie.domain, provider)) continue;
+    const cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
+    const protocol = cookie.secure ? 'https:' : 'http:';
+    const url = `${protocol}//${cleanDomain}${cookie.path}`;
+    await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
+    count++;
   }
+  return count;
 }
 
 /**

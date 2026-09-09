@@ -7,13 +7,18 @@
   if (window.__studocu_engine_initialized__) return;
   window.__studocu_engine_initialized__ = true;
 
-  // CAP-3: automatic cookie reset on doc entry. The engine only ASKS — the
-  // background worker is the single gatekeeper (per-tab counter, max 1 per
-  // 30 minutes), so entry resets can never loop. Reload happens solely on
-  // explicit approval; silence from the worker means stay put, never reload.
+  // CAP-3: automatic cookie reset on doc entry. Scoped to document pages only
+  // (both providers serve docs under /document/) with suffix host matching,
+  // so homepages, login/search pages, and lookalike hosts never trigger it.
+  // The background worker gatekeeps (per-tab counter, max 1 per 30 minutes);
+  // reload happens solely on explicit approval with cookies actually cleared.
   try {
     const host = window.location.hostname.toLowerCase();
-    const provider = host.includes('studocu.') ? 'studocu' : (host.includes('scribd.') ? 'scribd' : null);
+    const path = window.location.pathname.toLowerCase();
+    const onDocPath = path.includes('/document/');
+    const onStudocuDoc = onDocPath && /(^|\.)studocu\.(com|vn)$/.test(host);
+    const onScribdDoc = onDocPath && /(^|\.)scribd\.com$/.test(host);
+    const provider = onStudocuDoc ? 'studocu' : (onScribdDoc ? 'scribd' : null);
     const canMessage = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage);
     if (provider && canMessage && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['userOptions'], (res) => {
@@ -21,7 +26,7 @@
           if ((res.userOptions || {}).autoCookieReset === false) return;
           chrome.runtime.sendMessage(
             { action: 'ENTRY_AUTO_RESET_REQUEST', domain: provider },
-            (r) => { if (r && r.reset) window.location.reload(); }
+            (r) => { if (r && r.reset && r.cleared > 0) window.location.reload(); }
           );
         } catch (e) { /* entry reset skipped */ }
       });
@@ -200,6 +205,16 @@
     return clone;
   }
 
+  // Single source of truth for "the document's pages" — harvester progress,
+  // stabilize loop, and viewer build all share it (no selector drift).
+  const PAGE_SELECTORS_PRIMARY = 'div[data-page-index]';
+  const PAGE_SELECTORS_FALLBACK = '.document_scroller .outer_page, .document_scroller .page_missing_explanation, .document_column .page_missing_explanation, .document-wrapper .page';
+
+  function findDocPages() {
+    const primary = document.querySelectorAll(PAGE_SELECTORS_PRIMARY);
+    return primary.length > 0 ? primary : document.querySelectorAll(PAGE_SELECTORS_FALLBACK);
+  }
+
   /**
    * CAP-2: remove blur/cover/junk nodes from a viewer clone and neutralize
    * filters on the page root. Clone-only — the live DOM is hidden, never removed.
@@ -231,8 +246,7 @@
       window.scrollTo({ top: pos, behavior: 'instant' });
       unblurDocument();
       if (typeof onProgress === 'function') {
-        const pagesNow = document.querySelectorAll('div[data-page-index], .document_scroller .outer_page, .document_column .page_missing_explanation').length;
-        onProgress(pagesNow);
+        onProgress(findDocPages().length);
       }
       await new Promise(r => setTimeout(r, 60));
     }
@@ -242,7 +256,7 @@
     // first pages on long docs). Bounded at ~30s so a stuck loader can't hang us.
     let lastCount = -1, stableRounds = 0;
     const stabilizeStart = Date.now();
-    const countPages = () => document.querySelectorAll('div[data-page-index], .document_scroller .outer_page, .document_column .page_missing_explanation, .document-wrapper .page').length;
+    const countPages = () => findDocPages().length;
     while (stableRounds < 3 && Date.now() - stabilizeStart < 30000) {
       unblurDocument();
       const count = countPages();
@@ -289,11 +303,9 @@
     const existing = document.getElementById('clean-viewer-container');
     if (existing) existing.remove();
 
-    // 3. Identify pages (Studocu or Scribd)
-    let pages = document.querySelectorAll('div[data-page-index]');
-    if (pages.length === 0) {
-      pages = document.querySelectorAll('.document_scroller .page_missing_explanation, .document_scroller .outer_page, .document_column .page_missing_explanation, .document-wrapper .page');
-    }
+    // 3. Identify pages (Studocu or Scribd) — primary set wins so the same
+    // logical page is never counted twice from both selector sets.
+    let pages = findDocPages();
 
     if (pages.length === 0) {
       alert("⚠️ Không tìm thấy trang nào.\n(Hãy cuộn chuột xuống cuối tài liệu để trang web tải hết nội dung trước khi xuất!)");

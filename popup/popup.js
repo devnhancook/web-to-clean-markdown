@@ -191,20 +191,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ================= STUDOCU / SCRIBD ACTIONS =================
-  // CAP-3: cookie-clear helper for the manual popup button only. The automatic
-  // entry reset lives in background.js (clearCookiesForDomain + gatekeeper) —
-  // keep the two implementations separate, do not merge them.
+  // CAP-3: cookie-clear helper for the manual popup button only. Suffix match
+  // with dot boundary so lookalikes like evil-studocu.com never match.
+  // The automatic entry reset lives in background.js — keep the two
+  // implementations separate, do not merge them.
+  const DOC_COOKIE_SUFFIXES = ['studocu.com', 'studocu.vn', 'scribd.com'];
+
+  function isDocCookie(domain) {
+    const lower = (domain || '').toLowerCase().replace(/^\./, '');
+    return DOC_COOKIE_SUFFIXES.some(s => lower === s || lower.endsWith('.' + s));
+  }
+
   async function clearDocCookies() {
     const allCookies = await chrome.cookies.getAll({});
     let count = 0;
     for (const cookie of allCookies) {
-      if (cookie.domain.includes('studocu') || cookie.domain.includes('scribd')) {
-        const cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
-        const protocol = cookie.secure ? "https:" : "http:";
-        const url = `${protocol}//${cleanDomain}${cookie.path}`;
-        await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
-        count++;
-      }
+      if (!isDocCookie(cookie.domain)) continue;
+      const cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
+      const protocol = cookie.secure ? "https:" : "http:";
+      const url = `${protocol}//${cleanDomain}${cookie.path}`;
+      await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
+      count++;
     }
     return count;
   }
