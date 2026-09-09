@@ -1,0 +1,141 @@
+/* =========================================================
+   Clean A4 Viewer Layout — injected ONLY when the clean
+   print viewer is built (never loaded globally, otherwise the
+   `body > *` hide rule blanks the live page — see project-context.md
+   "Critical Don't-Miss Rules").
+   ========================================================= */
+
+body {
+  background-color: #f6f7fb !important;
+  margin: 0 !important;
+  overflow: auto !important;
+}
+
+body > *:not(#clean-viewer-container) {
+  display: none !important;
+}
+
+#clean-viewer-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 0;
+  z-index: 9999;
+}
+
+.std-page {
+  position: relative !important;
+  background-color: white;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+  display: block !important;
+  overflow: hidden !important;
+  border: none !important;
+}
+
+.std-page::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background-color: white !important;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.layer-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.layer-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.layer-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  overflow: visible !important;
+}
+
+.layer-text .pc,
+.layer-text .pc * {
+  transform: none !important;
+  overflow: visible !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* In-place reading mode: floating close button (print path never shows it,
+   but hide it in print CSS anyway in case the user hits Ctrl+P manually). */
+.clean-viewer-close {
+  position: fixed !important;
+  top: 16px !important;
+  right: 16px !important;
+  z-index: 10000 !important;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #1f2937;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+  cursor: pointer;
+}
+
+.clean-viewer-close:hover {
+  background: #111827;
+}
+
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  body {
+    background-color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #clean-viewer-container {
+    position: static !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .std-page {
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    box-shadow: none !important;
+    page-break-after: always !important;
+    break-after: always !important;
+    border: none !important;
+  }
+
+  .clean-viewer-close {
+    display: none !important;
+  }
+}

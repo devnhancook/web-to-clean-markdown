@@ -207,15 +207,37 @@
   }
 
   /**
-   * Build clean A4 printable viewer with full lazy-load guarantee
+   * Build clean A4 viewer with full lazy-load guarantee.
+   * previewOnly=true keeps the viewer on the page for in-place reading
+   * (no print machinery); otherwise the viewer prints immediately.
    */
-  async function buildCleanPrintableDocument() {
+  async function buildCleanPrintableDocument(previewOnly = false) {
+    // Entry ticket, taken synchronously: if a newer run starts while this one
+    // is still harvesting, the stale run aborts without touching the DOM.
+    const myTicket = (window.__w2mViewerTicket = (window.__w2mViewerTicket || 0) + 1);
     unblurDocument();
+
+    // Refuse preview while a print session is active — building now would yank
+    // the viewer out from under the ongoing print.
+    if (previewOnly && (window.__w2mPrintActive || window.matchMedia('print').matches)) {
+      alert('⚠️ Đang mở hộp thoại in — hãy đóng nó trước khi đọc tại chỗ.');
+      return { success: false, error: 'PRINT_DIALOG_OPEN' };
+    }
 
     // 1. Force lazy-load of all pages
     await forceLazyLoadAllPages();
 
-    // 2. Remove any existing clean viewer
+    // Abort if superseded by a newer run — leave the DOM to the winner.
+    if (myTicket !== window.__w2mViewerTicket) {
+      return { success: false, error: 'SUPERSEDED' };
+    }
+
+    // 2. Remove any existing clean viewer — via its registered cleanup first
+    // so prior listeners/timers are unhooked, not just orphaned.
+    if (typeof window.__w2mViewerCleanup === 'function') {
+      try { window.__w2mViewerCleanup(); } catch (e) { /* already torn down */ }
+      window.__w2mViewerCleanup = null;
+    }
     const existing = document.getElementById('clean-viewer-container');
     if (existing) existing.remove();
 
@@ -232,6 +254,29 @@
 
     const viewerContainer = document.createElement('div');
     viewerContainer.id = 'clean-viewer-container';
+
+    // A per-run token stops a stale run (timers/listeners from an earlier
+    // click) from tearing down a newer container sharing the same ID.
+    const runToken = (window.__w2mViewerRun = (window.__w2mViewerRun || 0) + 1);
+    viewerContainer.dataset.run = String(runToken);
+
+    // Viewer styles ride inside the container so they vanish with it on teardown
+    // (guarantees the host page is never left blanked by injected CSS).
+    const styleLink = document.createElement('link');
+    styleLink.rel = 'stylesheet';
+    styleLink.href = chrome.runtime.getURL('content/viewer.css');
+    viewerContainer.appendChild(styleLink);
+
+    // Single stylesheet-error handler for both print and preview modes:
+    // drop the viewer and say so — never leave a hidden/unstyled page.
+    // (Declared `styleFailed` here so the print path below can reuse it.)
+    let styleFailed = false;
+    styleLink.addEventListener('error', () => {
+      styleFailed = true;
+      const c = document.getElementById('clean-viewer-container');
+      if (c) c.remove();
+      alert('⚠️ Không tải được giao diện in/đọc (viewer.css) — đã khôi phục trang gốc.');
+    });
 
     pages.forEach((page, index) => {
       const pc = page.querySelector('.pc');
@@ -300,20 +345,87 @@
 
     document.body.appendChild(viewerContainer);
 
-    // Auto cleanup listener after print completes or cancels
-    const mediaQueryList = window.matchMedia('print');
-    const cleanupHandler = (mql) => {
-      if (!mql.matches) {
+    // Preview (read-in-place) mode: keep the viewer on the page with a close
+    // button and skip all print machinery (no timers, no listeners, no print).
+    if (previewOnly) {
+      // Shared closer for ✕ button and Escape key. It also clears the global
+      // cleanup registry when it is the active run (no leaks, no stale kills).
+      const escHandler = (e) => {
+        if (e.key !== 'Escape') return;
+        closePreview();
+      };
+      const closePreview = () => {
+        if (window.__w2mViewerCleanup === closePreview) window.__w2mViewerCleanup = null;
         const c = document.getElementById('clean-viewer-container');
         if (c) c.remove();
-        mediaQueryList.removeEventListener('change', cleanupHandler);
+        document.removeEventListener('keydown', escHandler);
+      };
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'clean-viewer-close';
+      closeBtn.textContent = '✕ Đóng';
+      closeBtn.addEventListener('click', closePreview);
+      document.addEventListener('keydown', escHandler);
+      viewerContainer.appendChild(closeBtn);
+      closeBtn.focus({ preventScroll: true });
+      window.__w2mViewerCleanup = closePreview;
+      return { success: true, count: pages.length, preview: true };
+    }
+
+    // Teardown removes the container — the viewer stylesheet rides inside it,
+    // so no injected CSS is ever left blanking the host page.
+    // (Run token was assigned at container creation; stale runs skip foreign tokens.)
+    const mediaQueryList = window.matchMedia('print');
+    let printEngaged = false;
+    const teardownCleanViewer = () => {
+      if (window.__w2mViewerCleanup === teardownCleanViewer) window.__w2mViewerCleanup = null;
+      window.__w2mPrintActive = false;
+      if (viewerContainer.isConnected) {
+        viewerContainer.remove();
+      } else {
+        const c = document.getElementById('clean-viewer-container');
+        if (c && c.dataset.run === String(runToken)) c.remove();
+      }
+      mediaQueryList.removeEventListener('change', cleanupHandler);
+      window.removeEventListener('afterprint', teardownCleanViewer);
+    };
+    const cleanupHandler = (mql) => {
+      if (mql.matches) {
+        printEngaged = true;
+      } else {
+        teardownCleanViewer();
       }
     };
     mediaQueryList.addEventListener('change', cleanupHandler);
+    window.addEventListener('afterprint', teardownCleanViewer);
+    window.__w2mViewerCleanup = teardownCleanViewer;
 
+    // Fallback: if the print dialog never opens (blocked/failed window.print),
+    // don't leave the host page hidden behind the viewer.
     setTimeout(() => {
-      window.print();
-    }, 1000);
+      if (!printEngaged && !window.matchMedia('print').matches) teardownCleanViewer();
+    }, 30000);
+
+    // Print once the viewer stylesheet is ready; the timeout fallback keeps a
+    // slow/blocked stylesheet from hanging the flow silently.
+    // (`styleFailed` and the error listener live with the <link> creation above.)
+    let printFired = false;
+    const firePrint = () => {
+      if (printFired || styleFailed) return;
+      // The viewer may have been replaced (e.g. read-in-place mode took
+      // over) — never pop a print dialog over a foreign container.
+      if (!viewerContainer.isConnected) return;
+      printFired = true;
+      window.__w2mPrintActive = true;
+      try {
+        window.print();
+      } catch (e) {
+        console.warn('window.print failed:', e);
+        teardownCleanViewer();
+        alert('⚠️ Không mở được hộp thoại in trên trang này.');
+      }
+    };
+    styleLink.addEventListener('load', () => setTimeout(firePrint, 300));
+    setTimeout(firePrint, 3000);
 
     return { success: true, count: pages.length };
   }
@@ -409,7 +521,7 @@
       return true;
     }
     if (msg.action === 'STUDOCU_PRINT_CLEAN') {
-      buildCleanPrintableDocument().then(res => {
+      buildCleanPrintableDocument(msg && msg.preview === true).then(res => {
         sendResponse(res);
       }).catch(err => {
         sendResponse({ success: false, error: err.message });
