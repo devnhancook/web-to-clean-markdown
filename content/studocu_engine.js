@@ -8,10 +8,11 @@
   window.__studocu_engine_initialized__ = true;
 
   // CAP-3: automatic cookie reset on doc entry. Scoped to document pages only
-  // (both providers serve docs under /document/) with suffix host matching,
-  // so homepages, login/search pages, and lookalike hosts never trigger it.
-  // The background worker gatekeeps (per-tab counter, max 1 per 30 minutes);
-  // reload happens solely on explicit approval with cookies actually cleared.
+  // with suffix host matching. Loop-proof by navigation type: our own reload
+  // (and any F5) reports type 'reload' and never re-requests — only genuine
+  // navigate/back_forward entries ask the worker. Returning to a doc from
+  // home therefore resets again, while reloads can never loop. A manual
+  // refresh skips auto-reset (use the manual cookie button after F5).
   try {
     const host = window.location.hostname.toLowerCase();
     const path = window.location.pathname.toLowerCase();
@@ -19,8 +20,10 @@
     const onStudocuDoc = onDocPath && /(^|\.)studocu\.(com|vn)$/.test(host);
     const onScribdDoc = onDocPath && /(^|\.)scribd\.com$/.test(host);
     const provider = onStudocuDoc ? 'studocu' : (onScribdDoc ? 'scribd' : null);
+    const navType = ((performance.getEntriesByType('navigation') || [])[0] || {}).type;
+    const freshEntry = navType === 'navigate' || navType === 'back_forward';
     const canMessage = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage);
-    if (provider && canMessage && chrome.storage && chrome.storage.local) {
+    if (provider && freshEntry && canMessage && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['userOptions'], (res) => {
         try {
           if ((res.userOptions || {}).autoCookieReset === false) return;

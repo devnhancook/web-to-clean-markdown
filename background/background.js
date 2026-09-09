@@ -132,9 +132,10 @@ async function clearCookiesForDomain(provider) {
 }
 
 /**
- * CAP-3 gatekeeper: entry auto-reset, max ONE approval per tab per 30 minutes.
- * Keyed by the stable sender tab ID (never by page URL), so entry resets
- * cannot loop no matter how the page URL mutates across reloads.
+ * CAP-3 gatekeeper: approves entry auto-resets. Keyed by stable sender tab ID
+ * (never page URL). Loop backstop: our own reload lands seconds after the
+ * reset, so a request arriving <10s after the last approval is denied — the
+ * navigation-type guard in the engine is primary, this is the belt.
  */
 const ALLOWED_DOC_DOMAINS = ['studocu', 'scribd'];
 const pendingEntryResets = new Set();
@@ -163,9 +164,9 @@ async function handleEntryAutoReset(message, sender, sendResponse) {
     for (const key of Object.keys(map)) {
       if (!map[key] || now - (map[key].ts || 0) >= 30 * 60 * 1000) delete map[key];
     }
-    if (map[tabId] && map[tabId].count >= 1) {
+    if (map[tabId] && now - map[tabId].ts < 10000) {
       await chrome.storage.session.set({ [KEY]: map });
-      sendResponse({ reset: false, reason: 'already-reset' });
+      sendResponse({ reset: false, reason: 'too-soon' });
       return;
     }
     // Reserve FIRST: if persisting fails, nothing was cleared yet, so a later
