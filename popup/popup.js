@@ -191,8 +191,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ================= STUDOCU / SCRIBD ACTIONS =================
-  // CAP-3: shared cookie-clear for doc domains — the manual button and the
-  // auto reset-and-reload flow both use this (no duplicated removal loops).
+  // CAP-3: cookie-clear helper for the manual popup button only. The automatic
+  // entry reset lives in background.js (clearCookiesForDomain + gatekeeper) —
+  // keep the two implementations separate, do not merge them.
   async function clearDocCookies() {
     const allCookies = await chrome.cookies.getAll({});
     let count = 0;

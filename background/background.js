@@ -127,6 +127,10 @@ async function clearCookiesForDomain(domain) {
  */
 async function handleClearCookiesAndReload(domain, sendResponse) {
   try {
+    if (!isAllowedDocDomain(domain)) {
+      sendResponse({ success: false, error: 'domain-not-allowed' });
+      return;
+    }
     const count = await clearCookiesForDomain(domain);
     sendResponse({ success: true, count });
   } catch (e) {
@@ -139,29 +143,71 @@ async function handleClearCookiesAndReload(domain, sendResponse) {
  * Keyed by the stable sender tab ID (never by page URL), so entry resets
  * cannot loop no matter how the page URL mutates across reloads.
  */
+const ALLOWED_DOC_DOMAINS = ['studocu', 'scribd'];
+const pendingEntryResets = new Set();
+
+function isAllowedDocDomain(domain) {
+  return ALLOWED_DOC_DOMAINS.includes(domain);
+}
+
 async function handleEntryAutoReset(message, sender, sendResponse) {
+  const tabId = sender && sender.tab && sender.tab.id;
+  if (tabId === undefined || !isAllowedDocDomain(message.domain)) {
+    sendResponse({ reset: false });
+    return;
+  }
+  if (pendingEntryResets.has(tabId)) {
+    sendResponse({ reset: false, reason: 'in-flight' });
+    return;
+  }
+  pendingEntryResets.add(tabId);
   try {
-    const tabId = sender && sender.tab && sender.tab.id;
-    if (tabId === undefined || !message.domain) {
-      sendResponse({ reset: false });
-      return;
-    }
     const KEY = '__w2mEntryResets';
     const now = Date.now();
     const data = await chrome.storage.session.get([KEY]);
     const map = (data && data[KEY]) || {};
-    const entry = map[tabId];
-    if (entry && entry.count >= 1 && now - entry.ts < 30 * 60 * 1000) {
+    // Sweep stale entries so the map can't leak and reused tab IDs aren't denied.
+    for (const key of Object.keys(map)) {
+      if (!map[key] || now - (map[key].ts || 0) >= 30 * 60 * 1000) delete map[key];
+    }
+    if (map[tabId] && map[tabId].count >= 1) {
+      await chrome.storage.session.set({ [KEY]: map });
       sendResponse({ reset: false, reason: 'already-reset' });
       return;
     }
-    const cleared = await clearCookiesForDomain(message.domain);
-    map[tabId] = { count: ((entry && entry.count) || 0) + 1, ts: now };
+    // Reserve FIRST: if persisting fails, nothing was cleared yet, so a later
+    // load retries instead of looping on an unrecorded clear.
+    map[tabId] = { count: 1, ts: now };
     await chrome.storage.session.set({ [KEY]: map });
+    let cleared = 0;
+    try {
+      cleared = await clearCookiesForDomain(message.domain);
+    } catch (e) {
+      // Roll the reservation back so a later load may retry the clear.
+      delete map[tabId];
+      try { await chrome.storage.session.set({ [KEY]: map }); } catch (ignored) {}
+      sendResponse({ reset: false, error: e.message });
+      return;
+    }
     sendResponse({ reset: true, cleared });
   } catch (e) {
     sendResponse({ reset: false, error: e.message });
+  } finally {
+    pendingEntryResets.delete(tabId);
   }
+}
+
+// Drop per-tab counters when tabs close (backs the 30-minute sweep above).
+if (chrome.tabs && chrome.tabs.onRemoved) {
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    chrome.storage.session.get(['__w2mEntryResets'], (data) => {
+      const map = (data && data.__w2mEntryResets) || {};
+      if (map[tabId] !== undefined) {
+        delete map[tabId];
+        chrome.storage.session.set({ __w2mEntryResets: map });
+      }
+    });
+  });
 }
 
 /**
