@@ -107,6 +107,31 @@ body > *:not(#clean-viewer-container) {
   background: #111827;
 }
 
+/* Studocu AI interstitial blocks (CAP-1): the toolbar ("Đặt câu hỏi về
+   tài liệu này") and its toggle list are injected between document pages
+   and get cloned into the viewer. Hide them with zero footprint so no
+   gaps remain. Prefix-only selectors — CSS-module hashes change per deploy. */
+#clean-viewer-container [class*="AIToolbar"],
+#clean-viewer-container [class*="CreationToggleList"] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+/* CAP-2 backstop: neutralize any blur/cover styling surviving on clones
+   (site stylesheets still apply to copied class attributes). */
+#clean-viewer-container [class*="blur"],
+#clean-viewer-container .blurred_page,
+#clean-viewer-container img {
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 @media print {
   @page {
     margin: 0;

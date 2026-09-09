@@ -15,8 +15,18 @@ html, body {
 .banner-wrapper,
 [class*="paywall"],
 [class*="overlay"],
+[class*="watermark"],
 #page-container-wrapper + div,
 .advertisement {
+  display: none !important;
+  z-index: -9999 !important;
+}
+
+/* Studocu AI interstitial blocks (CAP-1): same category as paywall
+   overlays — prefix-only, hashes change per deploy. Hiding them live
+   also keeps them out of markdown extraction (innerText skips display:none). */
+[class*="AIToolbar"],
+[class*="CreationToggleList"] {
   display: none !important;
   z-index: -9999 !important;
 }

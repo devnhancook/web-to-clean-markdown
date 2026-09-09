@@ -7,6 +7,27 @@
   if (window.__studocu_engine_initialized__) return;
   window.__studocu_engine_initialized__ = true;
 
+  // CAP-3: automatic cookie reset on doc entry. The engine only ASKS — the
+  // background worker is the single gatekeeper (per-tab counter, max 1 per
+  // 30 minutes), so entry resets can never loop. Reload happens solely on
+  // explicit approval; silence from the worker means stay put, never reload.
+  try {
+    const host = window.location.hostname.toLowerCase();
+    const provider = host.includes('studocu.') ? 'studocu' : (host.includes('scribd.') ? 'scribd' : null);
+    const canMessage = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage);
+    if (provider && canMessage && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['userOptions'], (res) => {
+        try {
+          if ((res.userOptions || {}).autoCookieReset === false) return;
+          chrome.runtime.sendMessage(
+            { action: 'ENTRY_AUTO_RESET_REQUEST', domain: provider },
+            (r) => { if (r && r.reset) window.location.reload(); }
+          );
+        } catch (e) { /* entry reset skipped */ }
+      });
+    }
+  } catch (e) { /* storage unavailable — skip entry reset */ }
+
   const SCALE_FACTOR = 4;
   const HEIGHT_SCALE_DIVISOR = 4;
 
@@ -24,8 +45,10 @@
         #upgrade-overlay, .banner-wrapper, [class*="paywall"], [class*="overlay"],
         [class*="preview_overlay"], [class*="blur_overlay"], [class*="modal_wrapper"],
         #page-container-wrapper + div, .advertisement, .doc_watermark, .scribd_watermark,
+        [class*="watermark"],
         .between_page_ads, .promo_banner, .page_blur, .text_layer_blurred, .autofill_page_blur,
-        div[class*="upsell"], div[class*="unlock_prompt"], div[class*="preview-banner"] {
+        div[class*="upsell"], div[class*="unlock_prompt"], div[class*="preview-banner"],
+        [class*="AIToolbar"], [class*="CreationToggleList"] {
           display: none !important; opacity: 0 !important; pointer-events: none !important; z-index: -9999 !important;
         }
         .pf, .pc, #document-wrapper, .document_scroller, .page_missing_explanation, .document-wrapper, #viewer-wrapper {
@@ -178,6 +201,20 @@
   }
 
   /**
+   * CAP-2: remove blur/cover/junk nodes from a viewer clone and neutralize
+   * filters on the page root. Clone-only — the live DOM is hidden, never removed.
+   */
+  function stripCloneJunk(root) {
+    root.querySelectorAll('.page_blur, .text_layer_blurred, .autofill_page_blur, [class*="blur"], [class*="AIToolbar"], [class*="CreationToggleList"]').forEach(el => el.remove());
+    if (root.classList) {
+      Array.from(root.classList).filter(c => c.toLowerCase().includes('blur')).forEach(c => root.classList.remove(c));
+    }
+    root.style.setProperty('filter', 'none', 'important');
+    root.style.setProperty('-webkit-filter', 'none', 'important');
+    root.style.setProperty('backdrop-filter', 'none', 'important');
+  }
+
+  /**
    * Auto-scroll harvester: scrolls through entire document to force Studocu/Scribd
    * to load 100% of lazy-loaded pages before building clean print view.
    */
@@ -200,8 +237,19 @@
       await new Promise(r => setTimeout(r, 60));
     }
     
-    // Wait a brief moment for DOM nodes to settle
-    await new Promise(r => setTimeout(r, 400));
+    // Stabilize: slow lazy-loaders keep adding pages after the scroll pass —
+    // wait until the count stops growing (fixes viewers built with only the
+    // first pages on long docs). Bounded at ~30s so a stuck loader can't hang us.
+    let lastCount = -1, stableRounds = 0;
+    const stabilizeStart = Date.now();
+    const countPages = () => document.querySelectorAll('div[data-page-index], .document_scroller .outer_page, .document_column .page_missing_explanation, .document-wrapper .page').length;
+    while (stableRounds < 3 && Date.now() - stabilizeStart < 30000) {
+      unblurDocument();
+      const count = countPages();
+      stableRounds = (count === lastCount) ? stableRounds + 1 : 0;
+      lastCount = count;
+      await new Promise(r => setTimeout(r, 500));
+    }
     unblurDocument();
     window.scrollTo({ top: originalScrollPos, behavior: 'instant' });
   }
@@ -313,7 +361,7 @@
         const bgLayer = document.createElement('div');
         bgLayer.className = 'layer-bg';
         const imgClone = originalImg.cloneNode(true);
-        imgClone.style.cssText = 'width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block;';
+        imgClone.style.cssText = 'width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; filter: none !important; -webkit-filter: none !important;';
         bgLayer.appendChild(imgClone);
         newPage.appendChild(bgLayer);
       }
@@ -339,6 +387,9 @@
           newPage.appendChild(textLayer);
         }
       }
+
+      // CAP-2: strip blur/cover/junk from the clone before it enters the viewer.
+      stripCloneJunk(newPage);
 
       viewerContainer.appendChild(newPage);
     });

@@ -191,6 +191,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ================= STUDOCU / SCRIBD ACTIONS =================
+  // CAP-3: shared cookie-clear for doc domains — the manual button and the
+  // auto reset-and-reload flow both use this (no duplicated removal loops).
+  async function clearDocCookies() {
+    const allCookies = await chrome.cookies.getAll({});
+    let count = 0;
+    for (const cookie of allCookies) {
+      if (cookie.domain.includes('studocu') || cookie.domain.includes('scribd')) {
+        const cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
+        const protocol = cookie.secure ? "https:" : "http:";
+        const url = `${protocol}//${cleanDomain}${cookie.path}`;
+        await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
+        count++;
+      }
+    }
+    return count;
+  }
+
   // Idle labels captured once at init — handlers must restore these constants,
   // never the live innerHTML (a previous error text must not become the baseline).
   const idlePrintLabel = btnDocCleanPrint.innerHTML;
@@ -274,17 +291,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnCookieClean.addEventListener('click', async () => {
     btnCookieClean.innerText = 'Đang quét cookie...';
     try {
-      const allCookies = await chrome.cookies.getAll({});
-      let count = 0;
-      for (const cookie of allCookies) {
-        if (cookie.domain.includes('studocu') || cookie.domain.includes('scribd')) {
-          let cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
-          const protocol = cookie.secure ? "https:" : "http:";
-          const url = `${protocol}//${cleanDomain}${cookie.path}`;
-          await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
-          count++;
-        }
-      }
+      const count = await clearDocCookies();
       btnCookieClean.innerText = `Đã xóa ${count} cookies!`;
       setTimeout(() => {
         chrome.tabs.reload(activeTabId);

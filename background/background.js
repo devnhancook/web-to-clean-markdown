@@ -35,6 +35,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === 'ENTRY_AUTO_RESET_REQUEST') {
+    handleEntryAutoReset(message, sender, sendResponse);
+    return true;
+  }
+
   if (message.action === 'INCREMENT_CLIP_COUNTER') {
     incrementClipCounter(sendResponse);
     return true;
@@ -98,24 +103,64 @@ function handleDownloadDirectUrl({ url, filename }, sendResponse) {
 }
 
 /**
+ * Remove all cookies whose domain includes the given substring.
+ * Shared by the manual button flow and the entry auto-reset gatekeeper.
+ * Returns the number of cookies removed.
+ */
+async function clearCookiesForDomain(domain) {
+  const allCookies = await chrome.cookies.getAll({});
+  let count = 0;
+  for (const cookie of allCookies) {
+    if (domain && cookie.domain.includes(domain)) {
+      const cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
+      const protocol = cookie.secure ? 'https:' : 'http:';
+      const url = `${protocol}//${cleanDomain}${cookie.path}`;
+      await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
  * Clear site cookies and reload active tab
  */
 async function handleClearCookiesAndReload(domain, sendResponse) {
   try {
-    const allCookies = await chrome.cookies.getAll({});
-    let count = 0;
-    for (const cookie of allCookies) {
-      if (domain && cookie.domain.includes(domain)) {
-        let cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
-        const protocol = cookie.secure ? 'https:' : 'http:';
-        const url = `${protocol}//${cleanDomain}${cookie.path}`;
-        await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
-        count++;
-      }
-    }
+    const count = await clearCookiesForDomain(domain);
     sendResponse({ success: true, count });
   } catch (e) {
     sendResponse({ success: false, error: e.message });
+  }
+}
+
+/**
+ * CAP-3 gatekeeper: entry auto-reset, max ONE approval per tab per 30 minutes.
+ * Keyed by the stable sender tab ID (never by page URL), so entry resets
+ * cannot loop no matter how the page URL mutates across reloads.
+ */
+async function handleEntryAutoReset(message, sender, sendResponse) {
+  try {
+    const tabId = sender && sender.tab && sender.tab.id;
+    if (tabId === undefined || !message.domain) {
+      sendResponse({ reset: false });
+      return;
+    }
+    const KEY = '__w2mEntryResets';
+    const now = Date.now();
+    const data = await chrome.storage.session.get([KEY]);
+    const map = (data && data[KEY]) || {};
+    const entry = map[tabId];
+    if (entry && entry.count >= 1 && now - entry.ts < 30 * 60 * 1000) {
+      sendResponse({ reset: false, reason: 'already-reset' });
+      return;
+    }
+    const cleared = await clearCookiesForDomain(message.domain);
+    map[tabId] = { count: ((entry && entry.count) || 0) + 1, ts: now };
+    await chrome.storage.session.set({ [KEY]: map });
+    sendResponse({ reset: true, cleared });
+  } catch (e) {
+    sendResponse({ reset: false, error: e.message });
   }
 }
 

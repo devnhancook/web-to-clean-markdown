@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const optFrontmatter = document.getElementById('opt-frontmatter');
   const optWatermark = document.getElementById('opt-watermark');
   const optPromptFormat = document.getElementById('opt-prompt-format');
+  const optAutoCookieReset = document.getElementById('opt-auto-cookie-reset');
   const btnSave = document.getElementById('btn-save');
   const saveStatus = document.getElementById('save-status');
 
@@ -15,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     optFrontmatter.checked = opts.frontmatter !== false;
     optWatermark.checked = opts.watermark !== false;
     optPromptFormat.value = opts.promptFormat || 'raw';
+    if (optAutoCookieReset) optAutoCookieReset.checked = opts.autoCookieReset !== false;
   });
 
   // Save options
@@ -22,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const userOptions = {
       frontmatter: optFrontmatter.checked,
       watermark: optWatermark.checked,
-      promptFormat: optPromptFormat.value
+      promptFormat: optPromptFormat.value,
+      autoCookieReset: optAutoCookieReset ? optAutoCookieReset.checked : true
     };
 
     chrome.storage.local.set({ userOptions }, () => {
