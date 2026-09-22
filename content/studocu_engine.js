@@ -39,10 +39,12 @@
   const SCALE_FACTOR = 4;
   const HEIGHT_SCALE_DIVISOR = 4;
 
+  let activeUnblurTimer = null;
+
   /**
-   * Unblur and remove paywall overlays on live DOM
+   * Unblur and remove paywall overlays on live DOM with countdown retry counter & MutationObserver.
    */
-  function unblurDocument() {
+  function unblurDocument(retryCount = 3) {
     // 1. Inject or verify CSS styles
     const styleId = 'w2m-unblur-style';
     if (!document.getElementById(styleId)) {
@@ -79,7 +81,38 @@
       el.style.visibility = 'visible';
     });
 
-    return { success: true, message: 'Unblur applied' };
+    // Remove confirmed watermark and paywall overlay nodes from live DOM
+    const WATERMARK_SELECTORS = '.doc_watermark, .scribd_watermark, div[class*="watermark"], .promo_banner, #upgrade-overlay';
+    document.querySelectorAll(WATERMARK_SELECTORS).forEach(el => {
+      try { el.remove(); } catch (e) {}
+    });
+
+    // Attach MutationObserver once (globally managed) to react instantly to dynamic watermark insertions
+    if (!window.__w2m_unblur_observer__ && document.body) {
+      try {
+        window.__w2m_unblur_observer__ = new MutationObserver((mutations) => {
+          const hasAddedNodes = mutations.some(m => m.addedNodes && m.addedNodes.length > 0);
+          if (!hasAddedNodes) return;
+          document.querySelectorAll(WATERMARK_SELECTORS).forEach(el => {
+            try { el.remove(); } catch (e) {}
+          });
+        });
+        window.__w2m_unblur_observer__.observe(document.body, { childList: true, subtree: true });
+      } catch (e) {}
+    }
+
+    // 3. Countdown retry mechanism: decrements retryCount, reschedules if > 0
+    if (activeUnblurTimer) {
+      clearTimeout(activeUnblurTimer);
+      activeUnblurTimer = null;
+    }
+    if (retryCount > 0) {
+      activeUnblurTimer = setTimeout(() => {
+        unblurDocument(retryCount - 1);
+      }, 250);
+    }
+
+    return { success: true, message: 'Unblur applied', remainingRetries: retryCount };
   }
 
   /**
