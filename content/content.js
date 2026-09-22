@@ -32,23 +32,29 @@
       turndownService.use(turndownPluginGfm.gfm);
     }
 
-    // Custom Rule: Preserve code block languages (e.g. language-python, language-js)
+    // Custom Rule: Preserve code block languages and handle nested elements like <pre><span></span><code>...</code></pre>
     turndownService.addRule('fencedCodeBlockWithLang', {
       filter: function (node, opts) {
         return (
           opts.codeBlockStyle === 'fenced' &&
-          node.nodeName === 'PRE' &&
-          node.firstChild &&
-          node.firstChild.nodeName === 'CODE'
+          node.nodeName === 'PRE'
         );
       },
       replacement: function (content, node) {
-        const codeEl = node.firstChild;
-        const className = codeEl.getAttribute('class') || node.getAttribute('class') || '';
-        const match = className.match(/language-([a-zA-Z0-9_-]+)/) || className.match(/lang-([a-zA-Z0-9_-]+)/);
-        const lang = match ? match[1] : '';
-        const codeText = codeEl.textContent || '';
-        return '\n\n```' + lang + '\n' + codeText.replace(/\n$/, '') + '\n```\n\n';
+        const codeEl = node.querySelector('code');
+        const targetEl = codeEl || node;
+
+        const extractLang = (el) => {
+          if (!el) return '';
+          const cls = el.getAttribute('class') || '';
+          const match = cls.match(/language-([a-zA-Z0-9_-]+)/) || cls.match(/lang-([a-zA-Z0-9_-]+)/);
+          return match ? match[1] : '';
+        };
+
+        const lang = extractLang(codeEl) || extractLang(node) || '';
+        const codeText = targetEl.textContent || '';
+        const fence = codeText.includes('```') ? '````' : '```';
+        return '\n\n' + fence + lang + '\n' + codeText.replace(/\r?\n$/, '') + '\n' + fence + '\n\n';
       }
     });
 

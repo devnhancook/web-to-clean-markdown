@@ -30,8 +30,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === 'CLEAR_COOKIES_AND_RELOAD') {
-    handleClearCookiesAndReload(message.domain, sendResponse);
+  if (message.action === 'ENTRY_AUTO_RESET_REQUEST') {
+    handleEntryAutoReset(message, sender, sendResponse);
     return true;
   }
 
@@ -98,25 +98,110 @@ function handleDownloadDirectUrl({ url, filename }, sendResponse) {
 }
 
 /**
- * Clear site cookies and reload active tab
+ * Provider key (exact) -> owned domain suffixes. Cookie matching is
+ * suffix-with-dot-boundary, so lookalikes like evil-studocu.com never match.
  */
-async function handleClearCookiesAndReload(domain, sendResponse) {
-  try {
-    const allCookies = await chrome.cookies.getAll({});
-    let count = 0;
-    for (const cookie of allCookies) {
-      if (domain && cookie.domain.includes(domain)) {
-        let cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
-        const protocol = cookie.secure ? 'https:' : 'http:';
-        const url = `${protocol}//${cleanDomain}${cookie.path}`;
-        await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
-        count++;
-      }
-    }
-    sendResponse({ success: true, count });
-  } catch (e) {
-    sendResponse({ success: false, error: e.message });
+const DOC_DOMAIN_SUFFIXES = {
+  studocu: ['studocu.com', 'studocu.vn'],
+  scribd: ['scribd.com']
+};
+
+function cookieBelongsToProvider(cookieDomain, provider) {
+  const suffixes = DOC_DOMAIN_SUFFIXES[provider] || [];
+  const lower = (cookieDomain || '').toLowerCase().replace(/^\./, '');
+  return suffixes.some(s => lower === s || lower.endsWith('.' + s));
+}
+
+/**
+ * Remove all cookies owned by the given provider key ('studocu' | 'scribd').
+ * Used solely by the entry auto-reset gatekeeper.
+ * Returns the number of cookies removed.
+ */
+async function clearCookiesForDomain(provider) {
+  const allCookies = await chrome.cookies.getAll({});
+  let count = 0;
+  for (const cookie of allCookies) {
+    if (!cookieBelongsToProvider(cookie.domain, provider)) continue;
+    const cleanDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
+    const protocol = cookie.secure ? 'https:' : 'http:';
+    const url = `${protocol}//${cleanDomain}${cookie.path}`;
+    await chrome.cookies.remove({ url: url, name: cookie.name, storeId: cookie.storeId });
+    count++;
   }
+  return count;
+}
+
+/**
+ * CAP-3 gatekeeper: approves entry auto-resets. Keyed by stable sender tab ID
+ * (never page URL). Loop backstop: our own reload lands seconds after the
+ * reset, so a request arriving <10s after the last approval is denied — the
+ * navigation-type guard in the engine is primary, this is the belt.
+ */
+const ALLOWED_DOC_DOMAINS = ['studocu', 'scribd'];
+const pendingEntryResets = new Set();
+
+function isAllowedDocDomain(domain) {
+  return ALLOWED_DOC_DOMAINS.includes(domain);
+}
+
+async function handleEntryAutoReset(message, sender, sendResponse) {
+  const tabId = sender && sender.tab && sender.tab.id;
+  if (tabId === undefined || !isAllowedDocDomain(message.domain)) {
+    sendResponse({ reset: false });
+    return;
+  }
+  if (pendingEntryResets.has(tabId)) {
+    sendResponse({ reset: false, reason: 'in-flight' });
+    return;
+  }
+  pendingEntryResets.add(tabId);
+  try {
+    const KEY = '__w2mEntryResets';
+    const now = Date.now();
+    const data = await chrome.storage.session.get([KEY]);
+    const map = (data && data[KEY]) || {};
+    // Sweep stale entries so the map can't leak and reused tab IDs aren't denied.
+    for (const key of Object.keys(map)) {
+      if (!map[key] || now - (map[key].ts || 0) >= 30 * 60 * 1000) delete map[key];
+    }
+    if (map[tabId] && now - map[tabId].ts < 10000) {
+      await chrome.storage.session.set({ [KEY]: map });
+      sendResponse({ reset: false, reason: 'too-soon' });
+      return;
+    }
+    // Reserve FIRST: if persisting fails, nothing was cleared yet, so a later
+    // load retries instead of looping on an unrecorded clear.
+    map[tabId] = { count: 1, ts: now };
+    await chrome.storage.session.set({ [KEY]: map });
+    let cleared = 0;
+    try {
+      cleared = await clearCookiesForDomain(message.domain);
+    } catch (e) {
+      // Roll the reservation back so a later load may retry the clear.
+      delete map[tabId];
+      try { await chrome.storage.session.set({ [KEY]: map }); } catch (ignored) {}
+      sendResponse({ reset: false, error: e.message });
+      return;
+    }
+    sendResponse({ reset: true, cleared });
+  } catch (e) {
+    sendResponse({ reset: false, error: e.message });
+  } finally {
+    pendingEntryResets.delete(tabId);
+  }
+}
+
+// Drop per-tab counters when tabs close (backs the 30-minute sweep above).
+if (chrome.tabs && chrome.tabs.onRemoved) {
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    chrome.storage.session.get(['__w2mEntryResets'], (data) => {
+      const map = (data && data.__w2mEntryResets) || {};
+      if (map[tabId] !== undefined) {
+        delete map[tabId];
+        chrome.storage.session.set({ __w2mEntryResets: map });
+      }
+    });
+  });
 }
 
 /**

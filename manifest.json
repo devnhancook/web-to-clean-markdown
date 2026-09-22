@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Web to Clean Markdown & Study Archiver",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "1-click convert any web article into clean Markdown for LLMs. Includes Studocu/Scribd unblur, A4 PDF print & universal PDF link scanner.",
   "author": "devnhancook",
   "permissions": [
@@ -43,7 +43,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["content/studocu_engine.css"],
+      "resources": ["content/viewer.css"],
       "matches": [
         "*://*.studocu.com/*",
         "*://*.studocu.vn/*",

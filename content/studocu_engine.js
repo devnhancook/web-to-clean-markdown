@@ -7,13 +7,44 @@
   if (window.__studocu_engine_initialized__) return;
   window.__studocu_engine_initialized__ = true;
 
+  // CAP-3: automatic cookie reset on doc entry. Scoped to document pages only
+  // with suffix host matching. Loop-proof by navigation type: our own reload
+  // (and any F5) reports type 'reload' and never re-requests — only genuine
+  // navigate/back_forward entries ask the worker. Returning to a doc from
+  // home therefore resets again, while reloads can never loop. A manual
+  // refresh skips auto-reset (use the manual cookie button after F5).
+  try {
+    const host = window.location.hostname.toLowerCase();
+    const path = window.location.pathname.toLowerCase();
+    const onDocPath = path.includes('/document/');
+    const onStudocuDoc = onDocPath && /(^|\.)studocu\.(com|vn)$/.test(host);
+    const onScribdDoc = onDocPath && /(^|\.)scribd\.com$/.test(host);
+    const provider = onStudocuDoc ? 'studocu' : (onScribdDoc ? 'scribd' : null);
+    const navType = ((performance.getEntriesByType('navigation') || [])[0] || {}).type;
+    const freshEntry = navType === 'navigate' || navType === 'back_forward';
+    const canMessage = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage);
+    if (provider && freshEntry && canMessage && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['userOptions'], (res) => {
+        try {
+          if ((res.userOptions || {}).autoCookieReset === false) return;
+          chrome.runtime.sendMessage(
+            { action: 'ENTRY_AUTO_RESET_REQUEST', domain: provider },
+            (r) => { if (r && r.reset && r.cleared > 0) window.location.reload(); }
+          );
+        } catch (e) { /* entry reset skipped */ }
+      });
+    }
+  } catch (e) { /* storage unavailable — skip entry reset */ }
+
   const SCALE_FACTOR = 4;
   const HEIGHT_SCALE_DIVISOR = 4;
 
+  let activeUnblurTimer = null;
+
   /**
-   * Unblur and remove paywall overlays on live DOM
+   * Unblur and remove paywall overlays on live DOM with countdown retry counter & MutationObserver.
    */
-  function unblurDocument() {
+  function unblurDocument(retryCount = 3) {
     // 1. Inject or verify CSS styles
     const styleId = 'w2m-unblur-style';
     if (!document.getElementById(styleId)) {
@@ -24,8 +55,10 @@
         #upgrade-overlay, .banner-wrapper, [class*="paywall"], [class*="overlay"],
         [class*="preview_overlay"], [class*="blur_overlay"], [class*="modal_wrapper"],
         #page-container-wrapper + div, .advertisement, .doc_watermark, .scribd_watermark,
+        [class*="watermark"],
         .between_page_ads, .promo_banner, .page_blur, .text_layer_blurred, .autofill_page_blur,
-        div[class*="upsell"], div[class*="unlock_prompt"], div[class*="preview-banner"] {
+        div[class*="upsell"], div[class*="unlock_prompt"], div[class*="preview-banner"],
+        [class*="AIToolbar"], [class*="CreationToggleList"] {
           display: none !important; opacity: 0 !important; pointer-events: none !important; z-index: -9999 !important;
         }
         .pf, .pc, #document-wrapper, .document_scroller, .page_missing_explanation, .document-wrapper, #viewer-wrapper {
@@ -48,7 +81,38 @@
       el.style.visibility = 'visible';
     });
 
-    return { success: true, message: 'Unblur applied' };
+    // Remove confirmed watermark and paywall overlay nodes from live DOM
+    const WATERMARK_SELECTORS = '.doc_watermark, .scribd_watermark, div[class*="watermark"], .promo_banner, #upgrade-overlay';
+    document.querySelectorAll(WATERMARK_SELECTORS).forEach(el => {
+      try { el.remove(); } catch (e) {}
+    });
+
+    // Attach MutationObserver once (globally managed) to react instantly to dynamic watermark insertions
+    if (!window.__w2m_unblur_observer__ && document.body) {
+      try {
+        window.__w2m_unblur_observer__ = new MutationObserver((mutations) => {
+          const hasAddedNodes = mutations.some(m => m.addedNodes && m.addedNodes.length > 0);
+          if (!hasAddedNodes) return;
+          document.querySelectorAll(WATERMARK_SELECTORS).forEach(el => {
+            try { el.remove(); } catch (e) {}
+          });
+        });
+        window.__w2m_unblur_observer__.observe(document.body, { childList: true, subtree: true });
+      } catch (e) {}
+    }
+
+    // 3. Countdown retry mechanism: decrements retryCount, reschedules if > 0
+    if (activeUnblurTimer) {
+      clearTimeout(activeUnblurTimer);
+      activeUnblurTimer = null;
+    }
+    if (retryCount > 0) {
+      activeUnblurTimer = setTimeout(() => {
+        unblurDocument(retryCount - 1);
+      }, 250);
+    }
+
+    return { success: true, message: 'Unblur applied', remainingRetries: retryCount };
   }
 
   /**
@@ -177,6 +241,30 @@
     return clone;
   }
 
+  // Single source of truth for "the document's pages" — harvester progress,
+  // stabilize loop, and viewer build all share it (no selector drift).
+  const PAGE_SELECTORS_PRIMARY = 'div[data-page-index]';
+  const PAGE_SELECTORS_FALLBACK = '.document_scroller .outer_page, .document_scroller .page_missing_explanation, .document_column .page_missing_explanation, .document-wrapper .page';
+
+  function findDocPages() {
+    const primary = document.querySelectorAll(PAGE_SELECTORS_PRIMARY);
+    return primary.length > 0 ? primary : document.querySelectorAll(PAGE_SELECTORS_FALLBACK);
+  }
+
+  /**
+   * CAP-2: remove blur/cover/junk nodes from a viewer clone and neutralize
+   * filters on the page root. Clone-only — the live DOM is hidden, never removed.
+   */
+  function stripCloneJunk(root) {
+    root.querySelectorAll('.page_blur, .text_layer_blurred, .autofill_page_blur, [class*="blur"], [class*="AIToolbar"], [class*="CreationToggleList"]').forEach(el => el.remove());
+    if (root.classList) {
+      Array.from(root.classList).filter(c => c.toLowerCase().includes('blur')).forEach(c => root.classList.remove(c));
+    }
+    root.style.setProperty('filter', 'none', 'important');
+    root.style.setProperty('-webkit-filter', 'none', 'important');
+    root.style.setProperty('backdrop-filter', 'none', 'important');
+  }
+
   /**
    * Auto-scroll harvester: scrolls through entire document to force Studocu/Scribd
    * to load 100% of lazy-loaded pages before building clean print view.
@@ -194,36 +282,66 @@
       window.scrollTo({ top: pos, behavior: 'instant' });
       unblurDocument();
       if (typeof onProgress === 'function') {
-        const pagesNow = document.querySelectorAll('div[data-page-index], .document_scroller .outer_page, .document_column .page_missing_explanation').length;
-        onProgress(pagesNow);
+        onProgress(findDocPages().length);
       }
       await new Promise(r => setTimeout(r, 60));
     }
     
-    // Wait a brief moment for DOM nodes to settle
-    await new Promise(r => setTimeout(r, 400));
+    // Stabilize: slow lazy-loaders keep adding pages after the scroll pass —
+    // wait until the count stops growing (fixes viewers built with only the
+    // first pages on long docs). Bounded at ~30s so a stuck loader can't hang us.
+    let lastCount = -1, stableRounds = 0;
+    const stabilizeStart = Date.now();
+    const countPages = () => findDocPages().length;
+    while (stableRounds < 3 && Date.now() - stabilizeStart < 30000) {
+      unblurDocument();
+      const count = countPages();
+      stableRounds = (count === lastCount) ? stableRounds + 1 : 0;
+      lastCount = count;
+      await new Promise(r => setTimeout(r, 500));
+    }
     unblurDocument();
     window.scrollTo({ top: originalScrollPos, behavior: 'instant' });
   }
 
   /**
-   * Build clean A4 printable viewer with full lazy-load guarantee
+   * Build clean A4 viewer with full lazy-load guarantee.
+   * previewOnly=true keeps the viewer on the page for in-place reading
+   * (no print machinery); otherwise the viewer prints immediately.
    */
-  async function buildCleanPrintableDocument() {
+  async function buildCleanPrintableDocument(previewOnly = false) {
+    // Entry ticket, taken synchronously: if a newer run starts while this one
+    // is still harvesting, the stale run aborts without touching the DOM.
+    const myTicket = (window.__w2mViewerTicket = (window.__w2mViewerTicket || 0) + 1);
     unblurDocument();
+
+    // Refuse preview while a print session is active — building now would yank
+    // the viewer out from under the ongoing print.
+    if (previewOnly && (window.__w2mPrintActive || window.matchMedia('print').matches)) {
+      alert('⚠️ Đang mở hộp thoại in — hãy đóng nó trước khi đọc tại chỗ.');
+      return { success: false, error: 'PRINT_DIALOG_OPEN' };
+    }
 
     // 1. Force lazy-load of all pages
     await forceLazyLoadAllPages();
 
-    // 2. Remove any existing clean viewer
+    // Abort if superseded by a newer run — leave the DOM to the winner.
+    if (myTicket !== window.__w2mViewerTicket) {
+      return { success: false, error: 'SUPERSEDED' };
+    }
+
+    // 2. Remove any existing clean viewer — via its registered cleanup first
+    // so prior listeners/timers are unhooked, not just orphaned.
+    if (typeof window.__w2mViewerCleanup === 'function') {
+      try { window.__w2mViewerCleanup(); } catch (e) { /* already torn down */ }
+      window.__w2mViewerCleanup = null;
+    }
     const existing = document.getElementById('clean-viewer-container');
     if (existing) existing.remove();
 
-    // 3. Identify pages (Studocu or Scribd)
-    let pages = document.querySelectorAll('div[data-page-index]');
-    if (pages.length === 0) {
-      pages = document.querySelectorAll('.document_scroller .page_missing_explanation, .document_scroller .outer_page, .document_column .page_missing_explanation, .document-wrapper .page');
-    }
+    // 3. Identify pages (Studocu or Scribd) — primary set wins so the same
+    // logical page is never counted twice from both selector sets.
+    let pages = findDocPages();
 
     if (pages.length === 0) {
       alert("⚠️ Không tìm thấy trang nào.\n(Hãy cuộn chuột xuống cuối tài liệu để trang web tải hết nội dung trước khi xuất!)");
@@ -232,6 +350,29 @@
 
     const viewerContainer = document.createElement('div');
     viewerContainer.id = 'clean-viewer-container';
+
+    // A per-run token stops a stale run (timers/listeners from an earlier
+    // click) from tearing down a newer container sharing the same ID.
+    const runToken = (window.__w2mViewerRun = (window.__w2mViewerRun || 0) + 1);
+    viewerContainer.dataset.run = String(runToken);
+
+    // Viewer styles ride inside the container so they vanish with it on teardown
+    // (guarantees the host page is never left blanked by injected CSS).
+    const styleLink = document.createElement('link');
+    styleLink.rel = 'stylesheet';
+    styleLink.href = chrome.runtime.getURL('content/viewer.css');
+    viewerContainer.appendChild(styleLink);
+
+    // Single stylesheet-error handler for both print and preview modes:
+    // drop the viewer and say so — never leave a hidden/unstyled page.
+    // (Declared `styleFailed` here so the print path below can reuse it.)
+    let styleFailed = false;
+    styleLink.addEventListener('error', () => {
+      styleFailed = true;
+      const c = document.getElementById('clean-viewer-container');
+      if (c) c.remove();
+      alert('⚠️ Không tải được giao diện in/đọc (viewer.css) — đã khôi phục trang gốc.');
+    });
 
     pages.forEach((page, index) => {
       const pc = page.querySelector('.pc');
@@ -268,7 +409,7 @@
         const bgLayer = document.createElement('div');
         bgLayer.className = 'layer-bg';
         const imgClone = originalImg.cloneNode(true);
-        imgClone.style.cssText = 'width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block;';
+        imgClone.style.cssText = 'width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; filter: none !important; -webkit-filter: none !important;';
         bgLayer.appendChild(imgClone);
         newPage.appendChild(bgLayer);
       }
@@ -295,25 +436,95 @@
         }
       }
 
+      // CAP-2: strip blur/cover/junk from the clone before it enters the viewer.
+      stripCloneJunk(newPage);
+
       viewerContainer.appendChild(newPage);
     });
 
     document.body.appendChild(viewerContainer);
 
-    // Auto cleanup listener after print completes or cancels
-    const mediaQueryList = window.matchMedia('print');
-    const cleanupHandler = (mql) => {
-      if (!mql.matches) {
+    // Preview (read-in-place) mode: keep the viewer on the page with a close
+    // button and skip all print machinery (no timers, no listeners, no print).
+    if (previewOnly) {
+      // Shared closer for ✕ button and Escape key. It also clears the global
+      // cleanup registry when it is the active run (no leaks, no stale kills).
+      const escHandler = (e) => {
+        if (e.key !== 'Escape') return;
+        closePreview();
+      };
+      const closePreview = () => {
+        if (window.__w2mViewerCleanup === closePreview) window.__w2mViewerCleanup = null;
         const c = document.getElementById('clean-viewer-container');
         if (c) c.remove();
-        mediaQueryList.removeEventListener('change', cleanupHandler);
+        document.removeEventListener('keydown', escHandler);
+      };
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'clean-viewer-close';
+      closeBtn.textContent = '✕ Đóng';
+      closeBtn.addEventListener('click', closePreview);
+      document.addEventListener('keydown', escHandler);
+      viewerContainer.appendChild(closeBtn);
+      closeBtn.focus({ preventScroll: true });
+      window.__w2mViewerCleanup = closePreview;
+      return { success: true, count: pages.length, preview: true };
+    }
+
+    // Teardown removes the container — the viewer stylesheet rides inside it,
+    // so no injected CSS is ever left blanking the host page.
+    // (Run token was assigned at container creation; stale runs skip foreign tokens.)
+    const mediaQueryList = window.matchMedia('print');
+    let printEngaged = false;
+    const teardownCleanViewer = () => {
+      if (window.__w2mViewerCleanup === teardownCleanViewer) window.__w2mViewerCleanup = null;
+      window.__w2mPrintActive = false;
+      if (viewerContainer.isConnected) {
+        viewerContainer.remove();
+      } else {
+        const c = document.getElementById('clean-viewer-container');
+        if (c && c.dataset.run === String(runToken)) c.remove();
+      }
+      mediaQueryList.removeEventListener('change', cleanupHandler);
+      window.removeEventListener('afterprint', teardownCleanViewer);
+    };
+    const cleanupHandler = (mql) => {
+      if (mql.matches) {
+        printEngaged = true;
+      } else {
+        teardownCleanViewer();
       }
     };
     mediaQueryList.addEventListener('change', cleanupHandler);
+    window.addEventListener('afterprint', teardownCleanViewer);
+    window.__w2mViewerCleanup = teardownCleanViewer;
 
+    // Fallback: if the print dialog never opens (blocked/failed window.print),
+    // don't leave the host page hidden behind the viewer.
     setTimeout(() => {
-      window.print();
-    }, 1000);
+      if (!printEngaged && !window.matchMedia('print').matches) teardownCleanViewer();
+    }, 30000);
+
+    // Print once the viewer stylesheet is ready; the timeout fallback keeps a
+    // slow/blocked stylesheet from hanging the flow silently.
+    // (`styleFailed` and the error listener live with the <link> creation above.)
+    let printFired = false;
+    const firePrint = () => {
+      if (printFired || styleFailed) return;
+      // The viewer may have been replaced (e.g. read-in-place mode took
+      // over) — never pop a print dialog over a foreign container.
+      if (!viewerContainer.isConnected) return;
+      printFired = true;
+      window.__w2mPrintActive = true;
+      try {
+        window.print();
+      } catch (e) {
+        console.warn('window.print failed:', e);
+        teardownCleanViewer();
+        alert('⚠️ Không mở được hộp thoại in trên trang này.');
+      }
+    };
+    styleLink.addEventListener('load', () => setTimeout(firePrint, 300));
+    setTimeout(firePrint, 3000);
 
     return { success: true, count: pages.length };
   }
@@ -409,7 +620,7 @@
       return true;
     }
     if (msg.action === 'STUDOCU_PRINT_CLEAN') {
-      buildCleanPrintableDocument().then(res => {
+      buildCleanPrintableDocument(msg && msg.preview === true).then(res => {
         sendResponse(res);
       }).catch(err => {
         sendResponse({ success: false, error: err.message });
